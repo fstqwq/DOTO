@@ -55,8 +55,13 @@ void solve() {
 	
 	logic->move(0, go_to(getHuman(ally, 0).position, map.bonus_places[mybonus]));
 
-	if (crystal[enemy].belong != -1) {
-		logic->move(crystal[enemy].belong, go_to(getHuman(ally, crystal[enemy].belong).position, base));
+	for (int i = 1; i < 5; i++) {
+		if (crystal[enemy].belong == i) {
+			logic->move(i, go_to(getHuman(ally, i).position, base));
+		}
+		else {
+			logic->move(i, go_to(getHuman(ally, i).position, crystal[enemy].position));
+		}
 	}
 	
 	for (int i = 0; i < hunum; i++) {
