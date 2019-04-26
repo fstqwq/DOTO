@@ -12,7 +12,7 @@ namespace fstqwq {
 	 * g[i][j] : mid point shortest path
 	*/
 	
-	point Illegal(-1, -1);
+	const point Illegal(-1, -1);
 
 	bool Legal(const point &x) {
 		return x.x > 0 && x.x < N && x.y > 0 && x.y < N && col[int(x.x)][int(x.y)];
