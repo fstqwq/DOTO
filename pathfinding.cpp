@@ -12,10 +12,10 @@ namespace fstqwq {
 	using std::max;
 	// if ed is directly reachable by st
 	// time complexity : (st - ed).len() / 0.6, appox. 500
-	point direct(const point &st, const point &ed) {
+	point direct(const point &st, const point &ed, int step_limit = 9999) {
 		double dis = (st - ed).len();
 		if (!Legal(st) || !Legal(ed)) return Illegal;
-		for (double d = CONST::human_velocity; d < dis; d += CONST::human_velocity) {
+		for (double d = CONST::human_velocity; d < dis && step_limit--; d += CONST::human_velocity) {
 			point p = st * ((dis - d) / dis) + ed * (d / dis);
 			if (!Legal(p)) return Illegal;
 		}
@@ -59,9 +59,10 @@ namespace fstqwq {
 		int colst = col[int(st.x)][int(st.y)], coled = col[int(ed.x)][int(ed.y)];
 		ans = 1e10;
 
-		for (int i = 1; i < M; i++) if (ok[colst][i] || (core[i] - st).len() <= Bsiz) {
+		for (int i = 1; i < M; i++) if (ok[colst][i] || (core[i] - st).len() <= Bsiz * 3 / 2) {
 			double tmp1 = (st - core[i]).len(), tmp2 = g[i][coled];
-			if (tmp1 != 0 && tmp1 + tmp2 < ans && (ret = direct(st, core[i])) != Illegal) {
+			//TODO: to be tested if optimized
+			if (tmp1 != 0 && tmp1 + tmp2 < ans && (ret = direct(st, core[i], 25)) != Illegal) {
 				pos = ret, ans = tmp1 + tmp2;
 			}
 		}
