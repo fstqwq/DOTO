@@ -1,6 +1,7 @@
 #pragma once
 #include <cmath>
 #include "const.h"
+#include "geometry.h"
 
 namespace fstqwq {
 	const int N = 320;
@@ -23,6 +24,10 @@ namespace fstqwq {
 		double len() const {
 			return sqrt(x * x + y * y);
 		}
+		point unit() {
+			if (abs(x) < eps && abs(y) < eps) return {0, 0};
+			return *this / len();
+		}
 		bool operator == (const point &o) {
 			return abs(x - o.x) < eps && abs(y - o.y) < eps;
 		}
@@ -31,6 +36,10 @@ namespace fstqwq {
 		}
 		operator Point () {
 			return {x, y};
+		}
+		point turn(int degree) {
+			double theta = degree / 180. * PI;
+			return point(x * cos(theta) - y * sin(theta), x * sin(theta) + y * cos(theta));
 		}
 	};
 
