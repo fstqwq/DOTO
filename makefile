@@ -23,9 +23,7 @@ main.o: makefile gamemap.h const.h playerAI.h geometry.h logic.h jsoncpp/json/js
 .PHONY: clean
 clean:
 ifeq ($(OS),Windows_NT)
-	-del -r *.out *.o
-	-del gamemap.h
+	-del -r *.out *.o gamemap.h precal
 else
-	-rm -r *.out *.o
-	-rm gamemap.h
+	-rm -r *.out *.o gamemap.h precal
 endif

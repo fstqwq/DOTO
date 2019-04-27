@@ -52,7 +52,7 @@ void readMap() {
 	Json::Reader reader0;
 	Json::Value root0;
 	if (!reader0.parse(JsonFile, JsonFile + strlen(JsonFile), root0)) {
-		cerr << "Parse failed0." << endl;
+		cerr << "Parse failed01." << endl;
 		return;
 	}
 
@@ -70,7 +70,7 @@ void readMap() {
 	Json::Value root;
 
 	if (!reader.parse(map_raw, root)) {
-		cerr << "Parse failed." << endl;
+		cerr << "Parse failed22." << endl;
 		return;
 	}
 
@@ -133,7 +133,7 @@ void readFrame() {
 	quyinhao();
 
 	if (!reader.parse(JsonFile, JsonFile + strlen(JsonFile), root)) {
-		cerr << "Parse failed1." << endl;
+		cerr << "Parse failed13." << endl;
 		return;
 	}
 
