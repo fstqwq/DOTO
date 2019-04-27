@@ -2,6 +2,7 @@
 #include <cmath>
 #include "const.h"
 #include "geometry.h"
+#include "logic.h"
 
 namespace fstqwq {
 	const int N = 320;
@@ -16,7 +17,8 @@ namespace fstqwq {
 		point () {}
 		point (double xx, double yy) : x(xx), y(yy) {}
 		point (double xx[]) : x(xx[0]), y(xx[1]) {}
-		point (Point a) : x(a.x), y(a.y) {} 
+		point (const Point& a) : x(a.x), y(a.y) {} 
+		point (const Human& a) : x(a.position.x), y(a.position.y) {}
 		point operator * (const double a) const {return point(x * a, y * a);}
 		point operator / (const double a) const {return point(x / a, y / a);}
 		friend point operator + (const point &a, const point &b) {return point(a.x + b.x, a.y + b.y);}
@@ -24,20 +26,20 @@ namespace fstqwq {
 		double len() const {
 			return sqrt(x * x + y * y);
 		}
-		point unit() {
+		point unit() const {
 			if (abs(x) < eps && abs(y) < eps) return {0, 0};
 			return *this / len();
 		}
-		bool operator == (const point &o) {
+		bool operator == (const point &o) const {
 			return abs(x - o.x) < eps && abs(y - o.y) < eps;
 		}
-		bool operator != (const point &o) {
+		bool operator != (const point &o) const {
 			return abs(x - o.x) >= eps || abs(y - o.y) >= eps;
 		}
-		operator Point () {
+		operator Point () const {
 			return {x, y};
 		}
-		point turn(int degree) {
+		point turn(int degree) const {
 			double theta = degree / 180. * PI;
 			return point(x * cos(theta) - y * sin(theta), x * sin(theta) + y * cos(theta));
 		}

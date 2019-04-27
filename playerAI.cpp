@@ -38,7 +38,7 @@ void init() {
 
 	double dis[2];
 	for (int i = 0; i < 2; i++) {
-		rush_to(base, map.bonus_places[i]);
+		go_to(base, map.bonus_places[i]);
 		dis[i] = last_go_to_dis;
 	}
 	mybonus = dis[1] < dis[0];
@@ -46,29 +46,13 @@ void init() {
 }
 
 
-Human getHuman(int x, int y) {return humans[y * facnum + x];}
+Human& getHuman(int x, int y) {return humans[y * facnum + x];}
 
-point target[hunum], Move[hunum], Shoot[hunum], Meteor[hunum];
-point mypos[hunum];
-vector <point> history[hunum]; // enemy history
-const maxHistory = 10;
+point target[hunum], Move[hunum], Shoot[hunum], Meteor[hunum], mypos[hunum];
 int attack[hunum];
 bool is_guard[hunum];
-
-void adjust_movement() {
-	for (int i = 0; i < hunum; i++) {
-		for (int j = i + 1; j < hunum; j++) {
-			if ((Move[i] - Move[j]).len() < fireball_radius) {
-				point newtarget = mypos[i] + (Move[i] - mypos[i]).turn(-5);
-				if (Legal(newtarget)) Move[i] = newtarget;
-				else {
-					newtarget = mypos[j] + (Move[j] - mypos[j]).turn(5);
-					if (Legal(newtarget)) Move[j] = newtarget;
-				}
-			}
-		}
-	}
-}
+vector <point> history[hunum]; // enemy history
+const int maxHistory = 20;
 
 
 void frame_update() {
@@ -80,7 +64,7 @@ void frame_update() {
 	}
 	for (int i = 0; i < hunum; i++) {
 		history[i].push_back(getHuman(enemy, i).position);	
-		if (history[i].size() > maxHistory) history[i].pop_front();
+		if (history[i].size() > maxHistory) history[i].erase(history[i].begin());
 	}
 
 }
@@ -89,7 +73,7 @@ void move(int i, const point &p) { // auto flash
 	Move[i] = p;
 	logic->move(i, p);
 
-	if ((p - getHuman(ally, i).position) < CONST::human_velocity + eps) {
+	if ((p - getHuman(ally, i).position).len() > CONST::human_velocity + eps) {
 		logic->flash(i);
 	}
 	else {
@@ -105,13 +89,40 @@ void meteor(int i, const point &p) {
 	Meteor[i] = p;
 }
 
+void adjust_movement() {
+	for (int i = 0; i < hunum; i++) {
+		for (int j = i + 1; j < hunum; j++) {
+			if ((Move[i] - Move[j]).len() < fireball_radius) {
+				point newtarget = mypos[i] + (Move[i] - mypos[i]).turn(Rand(-5, 3));
+				if (Legal(newtarget)) Move[i] = newtarget;
+				else {
+					newtarget = mypos[j] + (Move[j] - mypos[j]).turn(Rand(-3, 5));
+					if (Legal(newtarget)) Move[j] = newtarget;
+				}
+			}
+		}
+	}
+	for (int i = 0; i < hunum; i++) move(i, Move[i]);
+}
+
+
 point forecast(int i, int step = 10) {
 	Human &x = getHuman(enemy, i);
 	point dir(0, 0);
 	if (history[i].size() > 3) {
-		dir = (x.position - history[i].front()).unit() * 0.5 + (x.position - history[i][history[i].size() - 2]).unit() * 0.5;
+		dir = (x.position - history[i].front()).unit();
 	}
 	return history[i].back() + dir * step;
+}
+
+void find_enemy(int i) {
+	point x = getHuman(ally, i);
+	attack[i] = 0;
+	double dis = (getHuman(enemy, 0) - x).len();
+	for (int j = 1; j < hunum; j++) {
+		double tmp = (getHuman(enemy, j) - x).len();
+		if (tmp < dis) attack[i] = j, dis = tmp;
+	}
 }
 
 void solve() {
@@ -122,10 +133,11 @@ void solve() {
 
 	target[0] = map.bonus_places[mybonus];
 
+	int belonger = crystal[enemy].belong;
 	if (crystal[enemy].belong != -1) {
 		// Protect crystal belonger
 		int belonger = crystal[enemy].belong;
-		for (int i = 1; i < n; i++) {
+		for (int i = 1; i < hunum; i++) {
 			if (i == belonger) target[i] = crys[ally];
 			else {
 				target[i] = relative_pos(getHuman(ally, belonger).position, crys[enemy], explode_radius + 0.01);
@@ -134,22 +146,27 @@ void solve() {
 		}
 	}
 	else {
-		for (int i = 1; i < n; i++) {
+		for (int i = 1; i < hunum; i++) {
 			target[i] = crystal[enemy].position;
 		}
 	}
 
 	for (int i = 0; i < 5; i++) {
 		// TODO : Dodge
-		move(i, rush_to(getHuman(ally, i), target[i]));
+		if (i == belonger) {
+			move(i, go_to(getHuman(ally, i), target[i]));
+		}
+		else {
+			move(i, rush_to(getHuman(ally, i), target[i]));
+		}
 	}
 	
 	for (int i = 0; i < hunum; i++) find_enemy(i);
 
 	for (int i = 0; i < hunum; i++) {
 		point my = getHuman(ally, i), att = getHuman(enemy, attack[i]);
-		shoot(i, forecast(attack[i]), int((att - my) / (fireball_velocity + human_velocity)));
-		meteor(i, forecast(attack[i]), meteor_delay);
+		shoot(i, forecast(attack[i], int((att - my).len() / (fireball_velocity + human_velocity))));
+		meteor(i, forecast(attack[i], meteor_delay));
 	}
 
 	adjust_movement(); // Be seperate from others

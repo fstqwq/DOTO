@@ -32,7 +32,7 @@ namespace fstqwq {
 		double &ans = last_go_to_dis;	
 
 		ans = 1e10;
-		if (st == Illegal || ed == Illegal) return Illegal;
+		if (!Legal(st) || !Legal(ed)) return Illegal;
 
 		point ret = direct(st, ed);
 		if (ret != Illegal) {
@@ -46,7 +46,7 @@ namespace fstqwq {
 		for (int i = 1; i < M; i++) if (ok[colst][i] || (core[i] - st).len() <= Bsiz * 3 / 2) {
 			double tmp1 = max(0., (st - core[i]).len() - CONST::human_velocity), tmp2 = g[i][coled];
 			//TODO: to be tested if optimized
-			if (tmp1 != 0 && tmp1 + tmp2 < ans && (ret = direct(st, core[i], 25)) != Illegal) {
+			if (tmp1 != 0 && tmp1 + tmp2 < ans && (ret = direct(st, core[i], 99)) != Illegal) {
 				pos = ret, ans = tmp1 + tmp2;
 			}
 		}
@@ -55,7 +55,7 @@ namespace fstqwq {
 	}
 	
 	point go_to(const Human &x, const point &ed) {
-		return go_to(x.st, ed);
+		return go_to(x.position, ed);
 	}
 
 	double last_rush_to_ans;
@@ -72,7 +72,7 @@ namespace fstqwq {
 		if (dis <= CONST::flash_distance) return ans = 0, ed;
 
 		point after_jump = ed * (CONST::flash_distance / dis) + st * ((dis - CONST::flash_distance) / dis);
-		if (go_to(after_jump, ed) != Illegal && last_go_to_dis <= std_dis - CONST::flash_distance) return ans = last_go_to_dis, after_jump;
+		if (go_to(after_jump, ed) != Illegal) return ans = last_go_to_dis, after_jump;
 		return ans = std_dis, std_ans;
 	}
 		
