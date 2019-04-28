@@ -2,7 +2,7 @@ all: main.out
 
 main.out: makefile main.o logic.h logic.o const.h playerAI.h playerAI.cpp  jsoncpp/json/json-forwards.h jsoncpp/json/json.h jsoncpp/jsoncpp.cpp geometry.o geometry.h
 ifeq ($(OS),Windows_NT)
-	g++ main.o logic.o playerAI.cpp jsoncpp/jsoncpp.cpp geometry.o -o main.out -D_GLIBCXX_USE_CXX11_ABI=0 -static-libstdc++ -lwsock32 -std=c++11
+	g++ main.o logic.o playerAI.cpp jsoncpp/jsoncpp.cpp geometry.o -o main.exe -D_GLIBCXX_USE_CXX11_ABI=0 -static-libstdc++ -lwsock32 -std=c++11
 else
 	g++ main.o logic.o playerAI.cpp jsoncpp/jsoncpp.cpp geometry.o -o main.out -D_GLIBCXX_USE_CXX11_ABI=0 -static-libstdc++ -std=c++11 -pthread
 endif
@@ -23,7 +23,7 @@ main.o: makefile gamemap.h const.h playerAI.h geometry.h logic.h jsoncpp/json/js
 .PHONY: clean
 clean:
 ifeq ($(OS),Windows_NT)
-	-del -r *.out *.o gamemap.h precal
+	-del -r *.exe *.o gamemap.h
 else
-	-rm -r *.out *.o gamemap.h precal
+	-rm -r *.out *.o gamemap.h
 endif

@@ -8,6 +8,7 @@ namespace fstqwq {
 	const int N = 320;
 	const int M = 211;
 	const int Bsiz = 16;
+	const double pi = 3.14159265358979323846264338;
 	const double eps = 1e-7;
 	using std::abs;
 
@@ -39,9 +40,12 @@ namespace fstqwq {
 		operator Point () const {
 			return {x, y};
 		}
-		point turn(int degree) const {
-			double theta = degree / 180. * PI;
+		point turn(double theta) const {
 			return point(x * cos(theta) - y * sin(theta), x * sin(theta) + y * cos(theta));
+		}
+		point turn(int degree) const {
+			double theta = degree / 180. * pi;
+			return turn(theta);
 		}
 	};
 

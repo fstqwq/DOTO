@@ -29,7 +29,7 @@ namespace fstqwq {
 		return t + s;
 	}
 	int Rand(int l, int r) {
-		return int(xorshift128plus() % (r - l + 1)); 
+		return l + int(xorshift128plus() % (r - l + 1)); 
 	}
 
 	point relative_pos(const point& st, const point& ed, double len) {
