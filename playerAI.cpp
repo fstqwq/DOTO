@@ -1,22 +1,22 @@
 #include "playerAI.h"
 #include "pathfinding.cpp"
 #include <algorithm>
-#include <ctime>
-
+#include <bits/stdc++.h>
 using namespace CONST;
 
 namespace fstqwq {
 
+using namespace std;
 using pii = std::pair<int, int>;
 
 Logic *logic;
 
-#define time_of_game 	logic->map.time_of_game
 #define humans 			logic->humans
 #define fireballs		logic->fireballs
 #define meteors			logic->meteors
 #define crystal			logic->crystal
 #define map				logic->map
+#define time_of_game 	map.time_of_game
 // birth_places[i][j]
 // crystal_places[i]
 // target_places[i]
@@ -24,11 +24,12 @@ Logic *logic;
 
 int ally, enemy;
 const int facnum = 2, hunum = 5; // assert(facnum == 2), assert(hunum == 5);
+const int rand_times = 30;
 int mybonus;
 point base, crys[facnum], targ[facnum];
 
 void init() {
-	srand(time(NULL));
+	// srand in functions.h
 
 	ally = logic->faction;
 	enemy = logic->faction ^ 1;
@@ -60,6 +61,7 @@ int belonger;
 
 vector <point> history[hunum]; // enemy history
 const int maxHistory = 20;
+
 
 void frame_before() {
 	for (int i = 0; i < hunum; i++) goal[i] = Move[i] = Shoot[i] = Meteor[i] = Illegal;
@@ -127,7 +129,6 @@ void meteor(int i, const point &p) {
 }
 
 point forecast(int i, int step) {
-	return enpos[i];
 	point dir(0, 0);
 	if (step < 4 || history[i].size() < maxHistory) return enpos[i];
 
@@ -135,22 +136,36 @@ point forecast(int i, int step) {
 
 	if (dir.len() > human_velocity) dir = dir.unit() * human_velocity;
 	if (dir.len() < human_velocity / 3) dir = point(0, 0);
+	
 	point ans = enpos[i];
-	while (step-- > 0) {
+	for ( ; step-- >= 0; ) {
 		if (Legal(ans + dir)) ans = ans + dir;
+		else break;
+		dir = dir * 0.6;
 	}
 	return ans;
 }
 
 int find_enemy(point x) {
 	int att = 0;
-	double dis = 1e10;
+	double dis = 1e9;
+	for (int i = 0; i < hunum; i++) if (!endead[i]){
+		double tmp = g[col[int(x.x)][int(x.y)]][col[int(enpos[i].x)][int(enpos[i].y)]];
+		if (tmp < dis) att = i, dis = tmp;
+	}
+	return att;
+}
+
+point ff_enemy(point x) {
+	int att = -1;
+	double dis = 1e9;
 	for (int j = 0; j < hunum; j++) if (!endead[j]){
 		double tmp = (enpos[j] - x).len();
 		if (tmp < dis) att = j, dis = tmp;
 	}
-	return att;
+	return att == -1 ? point(1e9, 1e9) : enpos[att];
 }
+
 
 int has_enemy(point x, double r) {
 	for (int j = 0; j < hunum; j++) if (!endead[j]) {
@@ -164,24 +179,19 @@ void get_bonus(int id, int p) {
 	point bp = map.bonus_places[id];
 	if ((mypos[p] - bp).len() < bonus_radius + EP) {
 		int tar = has_enemy(bp, bonus_radius);
-		if (~tar) {
+		if (tar != 1) {
 			if (canflash[p] && canfire[p]) {
-				point dir(splash_radius + 0.1, 0);
-				while (!Legal(enpos[tar] + dir)) dir = dir.turn(Rand(0, 359));
-				goal[p] = enpos[tar] + dir;
-			}
-			else {
-				point dir(splash_radius + 0.1, 0), ans;
-				for (int i = 0; i < 50; i++) {
-					point tmp; 
-					while (!Legal(tmp = enpos[tar] + dir)) dir = dir.turn(Rand(0, 359));
-					if (i == 0 || (ans - mypos[p]).len() > (tmp - mypos[p]).len()) ans = tmp;
+				point ans = bp;
+				for (int t = 0; t < rand_times; t++) {
+					point x = enpos[tar] + point(splash_radius + fireball_velocity, 0).turn(Rand(0, 359)) * (Rand(90, 110) / 100.);
+					if (Legal(x)) ans = x;
 				}
 				goal[p] = ans;
 			}
+			goal[p] = bp; 
 		}
 		else {
-			goal[p] = bp + ((mypos[p] == bp ? point(0, 1) : mypos[p] - bp).unit() * bonus_radius * (Rand(80, 100) / 100.)).turn(human_velocity / bonus_radius);
+			goal[p] = bp;
 		}
 	}
 	else {
@@ -190,44 +200,152 @@ void get_bonus(int id, int p) {
 }
 
 void get_crystal(vector <int> squad) {
+	//int cnt = 0, tot = (int)squad.size();
+	//for (auto i : squad) cnt += !mydead[i];
+
 	if (belonger != -1) {
 		// Protect crystal belonger
 		for (auto i : squad) {
 			if (i == belonger) goal[i] = targ[ally];
 			else {
-				goal[i] = relative_pos(mypos[belonger], enpos[find_enemy(mypos[belonger])].turn(i * 20 - 50), explode_radius * 2);
+				goal[i] = relative_pos(mypos[belonger], enpos[find_enemy(mypos[belonger])].turn((i - 2 - (i > belonger)) * 20 - 10), explode_radius * 2);
 				is_guard[i] = 1;
 			}
 		}
 	}
 	else {
-		for (auto i : squad) {
-			goal[i] = crystal[enemy].position;
+		double shortest = 1e9;
+		for (auto i : squad) if (!mydead[i]) {
+			shortest = min(shortest, (mypos[i] - crystal[enemy].position).len() + (crystal[enemy].position - targ[ally]).len());
+		}
+		if (0 && (time_of_game - logic->frame + 1) * .6 >= shortest - target_radius) {
+			for (auto i : squad) {
+				goal[i] = crystal[ally].position + point(0, 5).turn((i % 3) * 120);
+				while (!Legal(Move[i])) {
+					goal[i] = crystal[ally].position + point(0, 5).turn((i % 3) * 120) * (Rand(50, 100) / 100.);
+				}
+			}
+		}
+		else {
+			for (auto i : squad) goal[i] = crystal[enemy].position;
+
+			// Union
+			for (auto i : squad) if (getHuman(ally, i).hp >= 50) {
+				for (auto j : squad) if (getHuman(ally, j).hp >= 50) {
+					double dis = (mypos[i] - mypos[j]).len();
+					if (dis > 50) {
+						int far = (mypos[i] - base).len() > (mypos[j] - base).len() ? i : j, near = i + j - far;
+						if (has_enemy(mypos[far], (mypos[far] - crystal[enemy].position).len()) != -1) {
+							goal[far] = mypos[near];
+						}
+					}
+				}
+			}
 		}
 	}
 }
 
+vector <::Fireball> nowfir;
+vector <::Meteor> nowmet;
+
+double Score(int id, point x) {
+	if (!Legal(x)) return 1e9;
+	double ret = 0;
+	go_to(x, goal[id]);
+	ret += last_go_to_dis;
+	for (int i = 0; i < 5; i++) if (!mydead[i] && i != id) {
+		double dis = (Move[i] - x).len();
+		ret += max(0., fireball_radius * 2 - dis) * 0.1;
+	}
+	
+	for (auto &v : nowfir) {
+		int hurt = 0;
+		point p = v.position;
+		double nowr = fireball_radius;
+		while (nowr > 0 && Legal(p)) {
+			p = p + point(cos(v.rotation), sin(v.rotation)) * double(fireball_velocity);
+			if ((p - x).len() < nowr + EP) {
+				hurt += 16;
+			}
+			else if ((p - x).len() < nowr + human_velocity * 2) {
+				// linear in (r, r + 2 v)
+				hurt += 8 * (nowr + human_velocity * 2 - (p - x).len()) / (human_velocity * 2);
+			}
+			nowr -= human_velocity;
+		}
+		if (hurt) ret += hurt;
+	}
+	
+	for (auto &v : nowmet) {
+		bool hurt = 0;
+		point p = v.position;
+		double nowr = explode_radius - max(0, v.last_time - 1) * human_velocity * 0.95;
+		if ((p - x).len() < nowr + EP) ret += 999;
+		else if ((p - x).len() < nowr + human_velocity + EP) ret += 5;
+	}
+	return ret;
+}
+
 void adjust_movement() {
-	for (int i = 0; i < 5; i++) {
-		// TODO : Dodge
+	for (int i = 0; i < 5; i++) if (!mydead[i]) {
 		if (i == belonger) {
-			move(i, go_to(mypos[i], goal[i]));
+			Move[i] = go_to(mypos[i], goal[i]);
 		}
 		else {
-			move(i, rush_to(getHuman(ally, i), goal[i]));
+			Move[i] = rush_to(getHuman(ally, i), goal[i]);
 		}
 	}
 
-	for (int i = 0; i < hunum; i++) {
-		for (int j = 0; j < hunum; j++) if (i != j) {
-			double dis = (Move[i] - Move[j]).len();
-			if (dis <= fireball_radius * 2) {
-				point newgoal = mypos[i] + (Move[i] - mypos[i]).turn(Rand(-10, 10));
-				while ((newgoal - Move[j]).len() < dis) newgoal = mypos[i] + (Move[i] - mypos[i]).turn(Rand(-10, 10));
-				if (Legal(newgoal)) Move[i] = newgoal;
+	// XXX : Dodge
+	// Implement : Rand, and score every position
+	// Target Dis + 0.1 * (Fireball_radius - Friend pos) + 5 * Fireball + 999 * meteor
+	for (int i = 0; i < hunum; i++) if (!mydead[i]) {
+		nowfir.clear();
+		nowmet.clear();
+		for (auto &x : fireballs) if (x.from_number % facnum != ally) {
+			if ((x.position - Move[i]).len() < 50) {
+				nowfir.push_back(x);
+			}
+		}
+		for (auto &x : meteors) if (x.from_number % facnum != ally) {
+			if ((x.position - Move[i]).len() < 50) {
+				nowmet.push_back(x);
+			}
+		}
+
+		double sc = Score(i, Move[i]);
+		point dir = Move[i] - mypos[i];
+		if (dir.len() > .3) { 
+			// Change direction a little, but not change length
+			for (int d = -20; d <= 20; d += 4) {
+				point p = mypos[i] + dir.turn(d);
+				double tmp = Score(i, p);
+				if (tmp < sc) sc = tmp, Move[i] = p;
+			}
+			dir = dir.unit() * human_velocity;
+			// Change direction a little, change length a little 
+			for (int t = 0; t < rand_times; t++) {
+				point p = mypos[i] + dir.turn(Rand(-60, 60)) * (Rand(80, 100) / 100.);
+				double tmp = Score(i, p);
+				if (tmp < sc) sc = tmp, Move[i] = p;
+			}
+			// Change direction 
+			for (int d = 30; d < 360; d += 30) {
+				point p = mypos[i] + dir.turn(d);
+				double tmp = Score(i, p);
+				if (tmp < sc) sc = tmp, Move[i] = p;
+			}
+		}
+		else {
+			dir = point(human_velocity, 0);
+			for (int d = 0; d < 360; d += 10) {
+				point p = mypos[i] + dir.turn(d);
+				double tmp = Score(i, p);
+				if (tmp < sc) sc = tmp, Move[i] = p;
 			}
 		}
 	}
+
 	for (int i = 0; i < hunum; i++) move(i, Move[i]);
 }
 

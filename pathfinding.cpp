@@ -66,13 +66,13 @@ namespace fstqwq {
 		
 		point std_ans = go_to(st, ed);
 		double std_dis = last_go_to_dis;
-		if (x.flash_time || !x.flash_num) return ans = std_dis, std_ans;
+		if (x.flash_time > 0 || !x.flash_num) return ans = std_dis, std_ans;
 
 		double dis = (ed - st).len();
 		if (dis <= CONST::flash_distance) return ans = 0, ed;
 
 		point after_jump = ed * (CONST::flash_distance / dis) + st * ((dis - CONST::flash_distance) / dis);
-		if (go_to(after_jump, ed) != Illegal) return ans = last_go_to_dis, after_jump;
+		if (go_to(after_jump, ed) != Illegal && last_go_to_dis < std_dis - CONST::flash_distance / 2) return ans = last_go_to_dis, after_jump;
 		return ans = std_dis, std_ans;
 	}
 		

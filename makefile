@@ -18,7 +18,7 @@ gamemap.h: makefile map.info preset.h
 	./precal.out
 
 main.o: makefile gamemap.h const.h playerAI.h geometry.h logic.h jsoncpp/json/json-forwards.h jsoncpp/json/json.h main.cpp
-	g++ -c main.cpp -D_GLIBCXX_USE_CXX11_ABI=0 -static-libstdc++ -std=c++11
+	g++ -c main.cpp -D_GLIBCXX_USE_CXX11_ABI=0 -static-libstdc++ -std=c++11 -Wshadow
 
 .PHONY: clean
 clean:
