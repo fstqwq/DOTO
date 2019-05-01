@@ -14,13 +14,20 @@ namespace fstqwq {
 
 	// if ed is directly reachable by st
 	// time complexity : (st - ed).len() / 0.6, appox. 500
-	point direct(const point &st, const point &ed, int step_limit = 9999) {
+	point direct(const point &st, const point &ed, int step_limit = 9999, double step = CONST::human_velocity) {
 		double dis = (st - ed).len();
 		if (!Legal(st) || !Legal(ed)) return Illegal;
-		for (double d = CONST::human_velocity; d < dis && step_limit--; d += CONST::human_velocity) {
+	/*	for (double d = CONST::human_velocity; d < dis && step_limit--; d += CONST::human_velocity) {
 			point p = st * ((dis - d) / dis) + ed * (d / dis);
 			if (!Legal(p)) return Illegal;
+		}*/
+
+		point p = st, dir = (st * ((dis - step) / dis) + ed * (step / dis)) - st;
+		for (double d = step; d < dis && step_limit--; d += step) {
+			p = p + dir;
+			if (!Legal(p)) return Illegal;
 		}
+
 		return dis <= CONST::human_velocity ? ed : (st * ((dis - CONST::human_velocity) / dis) + ed * (CONST::human_velocity / dis));
 	}
 
@@ -46,6 +53,7 @@ namespace fstqwq {
 		for (int i = 1; i < M; i++) if (ok[colst][i] || (core[i] - st).len() <= Bsiz * 3 / 2) {
 			double tmp1 = max(0., (st - core[i]).len() - CONST::human_velocity), tmp2 = g[i][coled];
 			//TODO: to be tested if optimized
+			//XXX : ok
 			if (tmp1 != 0 && tmp1 + tmp2 < ans && (ret = direct(st, core[i], 99)) != Illegal) {
 				pos = ret, ans = tmp1 + tmp2;
 			}
@@ -60,21 +68,26 @@ namespace fstqwq {
 
 	double last_rush_to_ans;
 	// We have to flash as fast as we could
-	point rush_to(const Human &x, const point &ed) {
-		const point &st = x.position;
+	point rush_to(const point &st, const point &ed) {
 		double &ans = last_rush_to_ans;
 		
+		double dis = (ed - st).len();
+		if (dis > human_velocity && dis <= CONST::flash_distance) return ans = 0, ed;
+
 		point std_ans = go_to(st, ed);
 		double std_dis = last_go_to_dis;
-		if (x.flash_time > 0 || !x.flash_num) return ans = std_dis, std_ans;
-
-		double dis = (ed - st).len();
-		if (dis <= CONST::flash_distance) return ans = 0, ed;
-
 		point after_jump = ed * (CONST::flash_distance / dis) + st * ((dis - CONST::flash_distance) / dis);
-		if (go_to(after_jump, ed) != Illegal && last_go_to_dis < std_dis - CONST::flash_distance / 2) return ans = last_go_to_dis, after_jump;
-		return ans = std_dis, std_ans;
+
+		if (go_to(after_jump, ed) != Illegal && last_go_to_dis + CONST::human_velocity < std_dis) {
+			return ans = last_go_to_dis, after_jump;
+		}
+		else {
+			return ans = std_dis, std_ans;
+		}
 	}
-		
+
+	point rush_to(const Human &x, const point &ed) {
+		return rush_to(x.position, ed);	
+	}
 }
 

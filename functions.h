@@ -35,5 +35,4 @@ namespace fstqwq {
 	point relative_pos(const point& st, const point& ed, double len) {
 		return st + (ed - st).unit() * len;
 	}
-
 }

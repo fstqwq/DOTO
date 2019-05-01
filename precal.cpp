@@ -12,6 +12,8 @@ typedef long double LD;
 const int n = 320;
 const int m = 211;
 
+int dis[n][n];
+
 unsigned char col[n][n];
 double core[m][2];
 int cnt[m];
@@ -94,6 +96,17 @@ void write_header() {
 	fprintf(header, ";\n");
 
 
+	fputs("int disw[N][N] = {\n", header);
+	for (int i = 0; i < n; i++) {
+		fprintf(header, "{");
+		for (int j = 0; j < n; j++) {
+			fprintf(header, "%d%c", dis[i][j], j == n - 1 ? '}' : ',');
+		}
+		fprintf(header, "\n%c", i == n - 1 ? '}' : ',');
+	}
+	fprintf(header, ";\n");
+
+
 	fprintf(header, "}\n");
 
 	fclose(header);
@@ -135,10 +148,34 @@ void calc_map() {
 				g[i][j] = min(g[i][j], g[i][k] + g[k][j]);
 			}
 }
+void calc_wall() {
+	const int dx[] = {1, -1, 0, 0}, dy[] = {0, 0, 1, -1};
+	queue <pair<int,int> > q;
+	memset(dis, 0x3f, sizeof dis);
+	for (int i = 0; i < n; i++)
+		for (int j = 0; j < n; j++) {
+			if (!col[i][j]) {
+				dis[i][j] = 0;
+				q.push({i, j});
+			}
+		}
+	while (!q.empty()) {
+		auto o = q.front(); q.pop();
+		int x = o.x, y = o.y;
+		for (int d = 0; d < 4; d ++) {
+			int tx = x + dx[d], ty = y + dy[d];
+			if (tx >= 0 && tx < n && ty >= 0 && ty < n && dis[tx][ty] > dis[x][y] + 1) {
+				dis[tx][ty] = dis[x][y] + 1;
+				q.push({x, y});
+			}
+		}
+	}
+}
 
 int main() {
 	open_map();
 	calc_dis();
 	calc_map();
+	calc_wall();
 	write_header();
 }
