@@ -12,7 +12,6 @@ typedef long double LD;
 const int n = 320;
 const int m = 211;
 
-int dis[n][n];
 
 unsigned char col[n][n];
 double core[m][2];
@@ -54,6 +53,7 @@ struct point {
 point co[m];
 bool ok[m][m];
 double g[n][n];
+point dis[n][n];
 
 void write_header() {
 	FILE *header = fopen("gamemap.h", "w");
@@ -96,11 +96,17 @@ void write_header() {
 	fprintf(header, ";\n");
 
 
-	fputs("int disw[N][N] = {\n", header);
+	fputs("const std::pair<int, int> P0(0, 0);\n", header);
+	fputs("std::pair<int, int> disw[N][N] = {\n", header);
 	for (int i = 0; i < n; i++) {
 		fprintf(header, "{");
 		for (int j = 0; j < n; j++) {
-			fprintf(header, "%d%c", dis[i][j], j == n - 1 ? '}' : ',');
+			if (dis[i][j].x == 0 && dis[i][j].y == 0) {
+				fprintf(header, "P0%c", j == n - 1 ? '}' : ',');
+			}
+			else {
+				fprintf(header, "{%.0lf,%.0lf}%c", dis[i][j].x, dis[i][j].y, j == n - 1 ? '}' : ',');
+			}
 		}
 		fprintf(header, "\n%c", i == n - 1 ? '}' : ',');
 	}
@@ -148,25 +154,35 @@ void calc_map() {
 				g[i][j] = min(g[i][j], g[i][k] + g[k][j]);
 			}
 }
+
+struct Node {
+	pair <int, int> x, f;
+};
+
+
+int nearwall[n + 1][n + 1];
+
 void calc_wall() {
 	const int dx[] = {1, -1, 0, 0}, dy[] = {0, 0, 1, -1};
-	queue <pair<int,int> > q;
-	memset(dis, 0x3f, sizeof dis);
-	for (int i = 0; i < n; i++)
-		for (int j = 0; j < n; j++) {
-			if (!col[i][j]) {
-				dis[i][j] = 0;
-				q.push({i, j});
+	queue < Node > q;
+	for (int i = 1; i < n; i++) {
+		for (int j = 1; j < n; j++) {
+			if ( (!col[i][j] || !col[i + 1][j] || !col[i][j + 1] || !col[i + 1][j + 1])
+				&& col[i][j] ||  col[i + 1][j] ||  col[i][j + 1] ||  col[i + 1][j + 1]) {
+				nearwall[i][j] = 1;
 			}
 		}
-	while (!q.empty()) {
-		auto o = q.front(); q.pop();
-		int x = o.x, y = o.y;
-		for (int d = 0; d < 4; d ++) {
-			int tx = x + dx[d], ty = y + dy[d];
-			if (tx >= 0 && tx < n && ty >= 0 && ty < n && dis[tx][ty] > dis[x][y] + 1) {
-				dis[tx][ty] = dis[x][y] + 1;
-				q.push({x, y});
+	}
+	for (int i = 0; i < 320; i++) {
+		for (int j = 0; j < 320; j++) if (col[i][j]) {
+			dis[i][j] = {0, 0};
+			for (int k = -13; k <= 13; k++) {
+				for (int l = -13; l <= 13; l++) {
+					int x = i + k, y = j + l;
+					if (x > 0 && x < n && y > 0 && y < n && nearwall[x][y] && (dis[i][j] - point(i + 0.5, j + 0.5)).len() > (point(x, y) - point(i + 0.5, j + 0.5)).len()) {
+						dis[i][j] = point(x, y);
+					}
+				}
 			}
 		}
 	}
