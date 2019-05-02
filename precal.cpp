@@ -96,17 +96,11 @@ void write_header() {
 	fprintf(header, ";\n");
 
 
-	fputs("const std::pair<int, int> P0(0, 0);\n", header);
-	fputs("std::pair<int, int> disw[N][N] = {\n", header);
+	fputs("int disw[N][N][2] = {\n", header);
 	for (int i = 0; i < n; i++) {
 		fprintf(header, "{");
 		for (int j = 0; j < n; j++) {
-			if (dis[i][j].x == 0 && dis[i][j].y == 0) {
-				fprintf(header, "P0%c", j == n - 1 ? '}' : ',');
-			}
-			else {
-				fprintf(header, "{%.0lf,%.0lf}%c", dis[i][j].x, dis[i][j].y, j == n - 1 ? '}' : ',');
-			}
+			fprintf(header, "{%.0lf,%.0lf}%c", dis[i][j].x, dis[i][j].y, j == n - 1 ? '}' : ',');
 		}
 		fprintf(header, "\n%c", i == n - 1 ? '}' : ',');
 	}

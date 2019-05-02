@@ -370,7 +370,7 @@ double Score(int id, point x) {
 	}
 
 	// away from wall
-	ret += max(0., fireball_radius * 2 - (x - disw[int(x.x)][int(x.y)]).len()) * .1 * dodge_ratio[id];
+	ret += max(0., fireball_radius * 2 - (x - point(disw[int(x.x)][int(x.y)])).len()) * .1 * dodge_ratio[id];
 	
 	for (auto &v : nowfir) {
 		double hurt = 0;

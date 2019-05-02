@@ -18,11 +18,9 @@ namespace fstqwq {
 		point () {}
 		point (double xx, double yy) : x(xx), y(yy) {}
 		point (double xx[]) : x(xx[0]), y(xx[1]) {}
+		point (int xx[]) : x(xx[0]), y(xx[1]) {}
 		point (const Point& a) : x(a.x), y(a.y) {} 
 		point (const Human& a) : x(a.position.x), y(a.position.y) {}
-		template <class U, class V> point (const pair <U, V>& a) {
-			x = a.first; y = a.second;
-		}
 		point operator * (const double a) const {return point(x * a, y * a);}
 		point operator / (const double a) const {return point(x / a, y / a);}
 		friend point operator + (const point &a, const point &b) {return point(a.x + b.x, a.y + b.y);}
