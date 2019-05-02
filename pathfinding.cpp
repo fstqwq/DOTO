@@ -28,20 +28,20 @@ namespace fstqwq {
 			if (!Legal(p)) return Illegal;
 		}
 
-		return dis <= CONST::human_velocity ? ed : (st * ((dis - CONST::human_velocity) / dis) + ed * (CONST::human_velocity / dis));
+		return dis <= step ? ed : (st * ((dis - step) / dis) + ed * (step / dis));
 	}
 
 	// Find a path from st to ed if without fireballs
 	// time complexity : appox. 500 * 100 * Luck(0, 1)
 	double last_go_to_dis;
 
-	point go_to(const point &st, const point &ed) {
+	point go_to(const point &st, const point &ed, double step = CONST::human_velocity) {
 		double &ans = last_go_to_dis;	
 
 		ans = 1e10;
 		if (!Legal(st) || !Legal(ed)) return Illegal;
 
-		point ret = direct(st, ed);
+		point ret = direct(st, ed, 9999, step);
 		if (ret != Illegal) {
 			ans = (ed - ret).len(); 
 			return ret;
@@ -51,10 +51,10 @@ namespace fstqwq {
 		int colst = col[int(st.x)][int(st.y)], coled = col[int(ed.x)][int(ed.y)];
 
 		for (int i = 1; i < M; i++) if (ok[colst][i] || (core[i] - st).len() <= Bsiz * 3 / 2) {
-			double tmp1 = max(0., (st - core[i]).len() - CONST::human_velocity), tmp2 = g[i][coled];
+			double tmp1 = max(0., (st - core[i]).len() - step), tmp2 = g[i][coled];
 			//TODO: to be tested if optimized
 			//XXX : ok
-			if (tmp1 != 0 && tmp1 + tmp2 < ans && (ret = direct(st, core[i], 99)) != Illegal) {
+			if (tmp1 != 0 && tmp1 + tmp2 < ans && (ret = direct(st, core[i], 99, step)) != Illegal) {
 				pos = ret, ans = tmp1 + tmp2;
 			}
 		}

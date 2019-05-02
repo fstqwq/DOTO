@@ -13,6 +13,7 @@ namespace fstqwq {
 	*/
 	
 	const point Illegal(-1, -1);
+	const point Gate[2] = {{105, 90}, {220, 245}};
 
 	bool Legal(const point &x) {
 		return x.x > 0 && x.x < N && x.y > 0 && x.y < N && col[int(x.x)][int(x.y)];
