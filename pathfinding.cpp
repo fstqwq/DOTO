@@ -66,6 +66,10 @@ namespace fstqwq {
 		return go_to(x.position, ed);
 	}
 
+	double dis_to(const point &st, const point &ed) {
+		go_to(st, ed);
+		return last_go_to_dis;
+	}
 	double last_rush_to_ans;
 	// We have to flash as fast as we could
 	point rush_to(const point &st, const point &ed) {
