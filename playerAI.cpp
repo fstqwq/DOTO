@@ -65,7 +65,7 @@ double dodge_ratio[hunum];
 vector <point> history[hunum]; // enemy history
 int enholdfire[hunum];
 const int maxHistory = 20;
-const int rand_times = 250;
+const int rand_times = 266;
 
 void frame_before() {
 	
@@ -185,7 +185,7 @@ int find_enemy(point x) {
 		go_to(x, enpos[i]);
 		double tmp = last_go_to_dis;
 		if (direct(x, enpos[i], 9999, 3) != Illegal) tmp *= 0.5;
-		if (i == enbelong) tmp *= 0.8;
+		if (i == enbelong) tmp *= 0.7;
 		if (tmp < dis) att = i, dis = tmp;
 	}
 	return att;
@@ -268,8 +268,8 @@ void suicide(int i, point ff = Illegal) {
 	if (!Legal(ff)) ff = ff_enemy(mypos[i]); 
 	goal[i] = ff;
 	if ((goal[i] - mypos[i]).len() < 9) {
-		for (int t = 0; t < rand_times; t++) {
-			point dir = goal[i] + point(6.5, 0).turn(Rand(0, 359));
+		for (int t = 0; t < 360; t++) {
+			point dir = goal[i] + point(6.98, 0).turn(t);
 			if (Legal(dir) && (!Legal(goal[i]) || abs((goal[i] - mypos[i]).len() - human_velocity) > abs((dir - mypos[i]).len() - human_velocity))) {
 				goal[i] = dir;
 			}
@@ -336,8 +336,8 @@ void get_crystal(vector <int> squad) {
 		}
 	}
 
-	for (int k = 0; k == 0 || (k == 1 && logic->frame < 600); k++) {
-		int tar = has_enemy(map.bonus_places[mybonus ^ k], bonus_radius);
+	for (int k = 0; (k <= 1 && (logic->frame < 800 || (logic->frame > 5500 && far))); k++) {
+		int tar = has_enemy(map.bonus_places[mybonus ^ k], bonus_radius * 2);
 		if ((logic->frame < 300 || tar != -1)) {
 			int to = -1;
 			for (auto v : squad) if (v != belonger) {
@@ -349,16 +349,6 @@ void get_crystal(vector <int> squad) {
 			else suicide(to, ff_enemy(map.bonus_places[mybonus ^ k]));
 		}
 	}
-
-
-
-
-	for (auto u : squad)
-		for (auto v : squad) if (u != v && !mydead[u] && !mydead[v]) {
-			if ((mypos[u] - mypos[v]).len() < 5 && canfire[u] && canfire[v] && !nofire[u] && !nofire[v]) {
-				nofire[v] = 1;
-			}
-		}
 
 /*
 	if (belonger != -1) {
@@ -512,47 +502,41 @@ void adjust_movement() {
 		point dir = Move[i] - mypos[i];
 		if (dir.len() > .1) { 
 			// Change direction a little, but not change length
-			for (int d = -30; d <= 30; d += 4) {
-				point p = mypos[i] + dir.turn(d);
-				double tmp = Score(i, p);
-				if (tmp < sc) sc = tmp, Move[i] = p;
-			}
-			dir = dir.unit() * human_velocity;
-			// Change everything 
-			for (int t = 0; t < rand_times; t++) {
-				point p = mypos[i] + dir.turn(Rand(0, 359)) * (Rand(0, 100) / 100.);
-				double tmp = Score(i, p);
-				if (tmp < sc) sc = tmp, Move[i] = p;
-			}
-			// Change direction 
-			for (int d = 15; d < 360; d += 15) {
+			for (int d = -30; d <= 30; d += 2) if (d != 0) {
 				point p = mypos[i] + dir.turn(d);
 				double tmp = Score(i, p);
 				if (tmp < sc) sc = tmp, Move[i] = p;
 			}
 		}
-		else {
-			dir = point(human_velocity, 0);
-			for (int t = 0; t < rand_times; t++) {
-				point p = mypos[i] + dir.turn(Rand(0, 359)) * (Rand(10, 100) / 100.);
-				double tmp = Score(i, p);
-				if (tmp < sc) sc = tmp, Move[i] = p;
-			}
-			for (int d = 0; d < 360; d += 10) {
-				point p = mypos[i] + dir.turn(d);
-				double tmp = Score(i, p);
-				if (tmp < sc) sc = tmp, Move[i] = p;
-			}
+		
+		dir = point(human_velocity, 0);
+
+		for (int d = 0; d < 360; d += 3) {
+			point p = mypos[i] + dir.turn(d);
+			double tmp = Score(i, p);
+			if (tmp < sc) sc = tmp, Move[i] = p;
 		}
+
+		for (int t = 0; t < rand_times; t++) {
+			point p = mypos[i] + dir.turn(Rand(0, 359)) * (Rand(20, 100) / 100.);
+			double tmp = Score(i, p);
+			if (tmp < sc) sc = tmp, Move[i] = p;
+		}
+
 		if (!no_flash[i] && canflash[i]) {
 			dir = dir.unit() * flash_distance;
-			for (int t = 0; t < rand_times * 3; t++) {
+			for (int d = 2; d < 360; d += 3) {
+				point p = mypos[i] + dir.turn(d);
+				double tmp = Score(i, p);
+				if (tmp < sc) sc = tmp, Move[i] = p;
+			}
+			for (int t = 0; t < rand_times * 2; t++) {
 				point p = mypos[i] + dir.turn(Rand(0, 359)) * (Rand(20, 100) / 100.);
 				double tmp = Score(i, p);
 				if (tmp < sc) sc = tmp, Move[i] = p;
 			}
 		}
-		logic->debugAppend(to_string(i) + " : " + to_string(sc) + "\n");
+//		logic->debugAppend(to_string(i) + " : " + to_string(sc) + "\n");
 	}
 
 	for (int i = 0; i < hunum; i++) move(i, Move[i]);
@@ -603,6 +587,7 @@ void solve() {
 
 	frame_after();
 
+	logic->debug("");
 	logic->debugAppend(to_string((clock() - st) / double(CLOCKS_PER_SEC)));
 }
 

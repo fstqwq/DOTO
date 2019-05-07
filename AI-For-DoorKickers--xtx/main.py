@@ -143,7 +143,7 @@ if PYGAME:
 		pygame.draw.circle(screen, white, (int(bonus.pos.x * scale),
 											int(bonus.pos.y * scale)), int(bonus.radius * scale))
 
-	def draw_all(humans, walls, balls, fireballs, meteors, targets, bonuses, score):
+	def draw_all(humans, walls, balls, fireballs, meteors, targets, bonuses, score, timecnt):
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				sys.exit()
@@ -177,7 +177,11 @@ if PYGAME:
 			myfont = pygame.font.Font(None, 40)
 			textImage = myfont.render(str(int(bonu[i])), True, gray)
 			screen.blit(textImage, (i * 80 * scale + 140 * scale, 0))
+		screen.blit(pygame.font.Font(None, 40).render(str(int(timecnt)), True, white), (0, 0))
 		pygame.display.flip()
+		
+		screen.blit(pygame.font.Font(None, 40).render(str(int(timecnt)), True, black), (0, 0))
+
 		
 		for i in (0, 1):
 			myfont = pygame.font.Font(None, 60)
@@ -615,7 +619,7 @@ def RunGame():
         sendLog(log)
 
         if PYGAME:
-            draw_all(humans, walls, balls, fireballs, meteors, targets,bonuses, score)
+            draw_all(humans, walls, balls, fireballs, meteors, targets,bonuses, score, timecnt)
 
         if DEBUG:
             WriteToLogFile("Send Succeed")
@@ -796,7 +800,7 @@ def RunGame():
         replay_dir = "." + os.sep + "Replay" + os.sep
         if not os.path.exists(replay_dir):
             os.mkdir(replay_dir)
-        replay_dir += "replay{}.zip".format(test_num)
+        replay_dir += "replay{1}-{2}.zip".format(str(int(score[0])), str(int(score[1])))
     else:
         replay_dir = save_dir
     name = replay_dir[replay_dir.rfind('/')+1:]
