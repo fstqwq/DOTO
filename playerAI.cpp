@@ -397,12 +397,16 @@ void get_crystal(vector <int> squad) {
 			}
 			else {
 				goal[i] = cp;
-				if (belonger != -1) for (int t = 0; t < rand_times; t++) {
+				if (belonger != -1) {
+					goalr[i] = fireball_radius * 2;
+				}
+				/*
+				 for (int t = 0; t < rand_times; t++) {
 					point x = cp + point(fireball_radius * 2, 0).turn(Rand(0, 359));
 					if (Legal(x) && (abs((goal[i] - mypos[i]).len() - human_velocity) > abs((x - mypos[i]).len() - human_velocity) || !Legal(goal[i]))) {
 						goal[i] = x;
 					}
-				}
+				}*/
 			}
 		}
 	}
@@ -427,9 +431,15 @@ void get_crystal(vector <int> squad) {
 				}
 			}
 			else {
+				bool guard = 0;
 				if (getHuman(ally, i).hp <= 15) {
 					suicide(i);	
 				}
+			/*	else if (!guard) {
+					goal[i] = cp;
+					goalr[i] = fireball_radius * 2;
+					guard = 1;
+				}*/
 				else {
 					goal[i] = targ[enemy];
 					point dir;
@@ -731,9 +741,9 @@ void solve() {
 
 	frame_before();
 
-	get_bonus(0, 0);
-	get_bonus(1, 1);
-	get_crystal({2, 3, 4});
+	get_bonus(0, mybonus);
+//	get_bonus(1, 1);
+	get_crystal({1, 2, 3, 4});
 	adjust_movement();
 	damage();	
 
