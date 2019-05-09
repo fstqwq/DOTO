@@ -35,7 +35,6 @@ void init() {
 	base = map.birth_places[ally][0];
 	enbase = map.birth_places[enemy][0];
 
-	for (int i = 0; i < 2; i++) crys[i] = map.crystal_places[i];
 	for (int i = 0; i < 2; i++) targ[i] = map.target_places[i];
 
 	double dis[2];
@@ -64,7 +63,7 @@ double dodge_ratio[hunum];
 
 vector <point> history[hunum]; // enemy history
 int enholdfire[hunum];
-const int maxHistory = 16;
+const int maxHistory = 18;
 const int rand_times = 266;
 
 int frame = 0;
@@ -77,6 +76,7 @@ void frame_before() {
 
 	logic->debug("");
 
+	for (int i = 0; i < 2; i++) crys[i] = map.crystal_places[i];
 	for (int i = 0; i < hunum; i++) goal[i] = Move[i] = Shoot[i] = Meteor[i] = Illegal;
 	for (int i = 0; i < hunum; i++) goalr[i] = 0; 
 	for (int i = 0; i < hunum; i++) attack[i] = -1, is_guard[i] = 0;
@@ -152,7 +152,7 @@ void shoot(int i, const point &p) {
 	if (nofire[i] || !canfire[i]) return;
 	
 	point dir = (p - Move[i]);
-	if (dir.len() < 2) return;
+	if (dir.len() < 3) return;
 
 	dir = dir.unit();
 
@@ -171,7 +171,7 @@ void shoot(int i, const point &p) {
 			best = d;
 		}
 	}
-	if (dis > 10) {
+	if (dis > 4) {
 		for (int d = -100; d < -40; d += 4) {
 			point dd = dir.turn(d);
 			double tmp = 1e9;
@@ -240,7 +240,7 @@ point forecast(int i, int step, point aux = Illegal) {
 	}
 
 	point ed(0, 0), st(0, 0);
-	int sample = 5, dis = maxHistory - sample;
+	int sample = 3, dis = maxHistory - sample;
 	for (int j = 0; j < sample; j++) {
 		ed = ed + history[i][j];
 		st = st + history[i][j + dis];
@@ -252,39 +252,65 @@ point forecast(int i, int step, point aux = Illegal) {
 /*	dir = (history[i].front() - history[i].back()) / (maxHistory - 1);*/
 
 	if (dir.len() > human_velocity) dir = dir.unit() * human_velocity;
-	if (dir.len() < human_velocity / 3) dir = {0, 0};
-
 	point ans = enpos[i];
+	bool okk = 0;
+	if (dir.len() < human_velocity / 3) {
+		point postar = Illegal;
+		for (int b = 0; b < 2; b++) {
+			if ((enpos[i] - map.bonus_places[b]).len() < bonus_radius * 5) {
+				postar = map.bonus_places[b];
+				break;
+			}
+		}
+		if (postar == Illegal) {
+			if (enbelong == -1) {
+				postar = crys[ally]; 
+			}
+			else {
+				postar = targ[enemy];
+			}
+		}
+		if (postar != Illegal && aux != Illegal) {
+			okk = 1;
+			for (int t = 0; t < 1 && 3 * (t + 2) < (ans - aux).len(); t++) {
+				point ret = go_to(ans, postar);
+				if (Legal(ret)) ans = ret;
+				else break;
+			}
+		}
+	}
 
-	if (i == enbelong) {
-		if (step != -1) {
+	if (!okk) {
+		/*	if (i == enbelong) {
+			if (step != -1) {
 			for ( ; step-- > 0; ) {
-				point ret = go_to(ans, targ[enemy], 0.5);
-				if (Legal(ret)) ans = ret;
-				else break;
+			point ret = go_to(ans, targ[enemy], 0.5);
+			if (Legal(ret)) ans = ret;
+			else break;
 			}
-		}
-		else {
+			}
+			else {
 			for (int t = 2; (ans - aux).len() > 3 * t; t++) {
-				point ret = go_to(ans, targ[enemy], 0.5);
-				if (Legal(ret)) ans = ret;
-				else break;
+			point ret = go_to(ans, targ[enemy], 0.5);
+			if (Legal(ret)) ans = ret;
+			else break;
 			}
-		}
-	}
-	else if (step != -1) {
-		for ( ; step-- > 0; ) {
-			point ret = ans + dir;
-			if (Legal(ret)) ans = ret;
-			else break;
-		}
-	}
-	else {
-		for (int t = 2; (ans - aux).len() > 3 * t; t++) {
-			point ret = ans + dir;
-			if (Legal(ret)) ans = ret;
-			else break;
-		}
+			}
+			}
+			else */if (step != -1) {
+				for ( ; step-- > 0; ) {
+					point ret = ans + dir;
+					if (Legal(ret)) ans = ret;
+					else break;
+				}
+			}
+			else {
+				for (int t = 2; (ans - aux).len() > 3 * t; t++) {
+					point ret = ans + dir;
+					if (Legal(ret)) ans = ret;
+					else break;
+				}
+			}
 	}
 	return ans;
 }
@@ -330,9 +356,9 @@ void get_bonus(int bonus_id, int p) {
 		int tar = has_enemy(b, bonus_radius);
 		dodge_ratio[p] = 6;
 		if (tar != -1) {
-			if (canflash[p] && canfire[p] && getHuman(ally, p).hp > getHuman(enemy, tar).hp * 2) {
+			if (canflash[p] && canfire[p] && getHuman(enemy, tar).fire_time > 7 && getHuman(enemy, tar).flash_time > 4) {
 				goal[p] = enpos[tar];
-				goalr[p] = 4.8;
+				goalr[p] = 6;
 			}
 			else {
 				goal[p] = enpos[tar];
@@ -484,8 +510,8 @@ double Score(int id, point x) {
 					ret += dis * (dis > goalr[id] ? 1.5 : 0.01);
 					ret += (map.bonus_places[i] - x).len() * 1;
 					if (has_enemy(map.bonus_places[i], bonus_radius) != -1) {
-						ret -= ((map.bonus_places[i] - x).len() < EP) * 0.2;
-						ret -= ((enpos[has_enemy(map.bonus_places[i], bonus_radius)] - map.bonus_places[i]).len() > (x - map.bonus_places[i]).len()) * 0.2;
+						ret -= ((map.bonus_places[i] - x).len() < EP) * 0.1;
+						ret -= ((enpos[has_enemy(map.bonus_places[i], bonus_radius)] - map.bonus_places[i]).len() > (x - map.bonus_places[i]).len()) * 0.3;
 						nomove = 1;
 					}
 					break;
@@ -536,10 +562,10 @@ double Score(int id, point x) {
 			else if (dis < fireball_radius) {
 				hurt = max(hurt, ((nowr + human_velocity > dis ? 6 : 2) + pow(fireball_radius - dis, 2)) * ((15 - t) / 10.));
 			}
-			else if (dis < fireball_radius + human_velocity * 3 && !is_guard[id]) {
-				hurt = max(hurt, .5 * ((10 - t) / 8.) * (fireball_radius + human_velocity * 3 - dis));
+			else if (dis < fireball_radius + human_velocity * 3) {
+				hurt = max(hurt, .3 * ((10 - t) / 8.) * (fireball_radius + human_velocity * 3 - dis));
 			}
-			nowr -= human_velocity;
+			nowr -= human_velocity * 0.9;
 			t++;
 		}
 		ret += hurt * dodge_ratio[id];
