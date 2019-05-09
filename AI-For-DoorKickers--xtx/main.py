@@ -50,166 +50,179 @@ sleepp = 1 / 100.
 score = [0, 0]
 deli  = [0, 0]
 bonu  = [0, 0]
+hurted = [0, 0]
 
 if PYGAME:
-	pygame.init()
-	screen = pygame.display.set_mode((int(width * scale), int(height * scale)))
-	pygame.display.set_caption("Defense Of The sOgou")
+    pygame.init()
+    screen = pygame.display.set_mode((int(width * scale), int(height * scale)))
+    pygame.display.set_caption("Defense Of The sOgou")
 
-	def draw_wall(x, y):
-		pygame.draw.rect(screen, black, pygame.Rect(x * room_size * scale, y * room_size * scale,
-													room_size * scale, room_size * scale))
-	def draw_road(x, y):
-		pygame.draw.rect(screen, gray, pygame.Rect(x * room_size * scale, y * room_size * scale,
-													room_size * scale, room_size * scale))
-	screen.fill(gray)
-	for x in range(int(width / room_size)):
-		for y in range(int(height / room_size)):
-			if walls[x][y]:
-				draw_wall(x, y)
+    def draw_wall(x, y):
+        pygame.draw.rect(screen, black, pygame.Rect(x * room_size * scale, y * room_size * scale,
+                                                    room_size * scale, room_size * scale))
+    def draw_road(x, y):
+        pygame.draw.rect(screen, gray, pygame.Rect(x * room_size * scale, y * room_size * scale,
+                                                    room_size * scale, room_size * scale))
+    screen.fill(gray)
+    for x in range(int(width / room_size)):
+        for y in range(int(height / room_size)):
+            if walls[x][y]:
+                draw_wall(x, y)
 
-	def draw_ball(ball):
-		pygame.draw.circle(screen, black, (int(ball.pos.x * scale),
-										   int(ball.pos.y * scale)), int(ball.radius * scale))
+    def draw_ball(ball):
+        pygame.draw.circle(screen, black, (int(ball.pos.x * scale),
+                                           int(ball.pos.y * scale)), int(ball.radius * scale))
 
-	def draw_fireball(fireball):
-		pygame.draw.circle(screen, (200, 200, 100), (int(fireball.pos.x * scale),
-										 int(fireball.pos.y * scale)), int(fireball.radius * scale))
+    def draw_fireball(fireball):
+        pygame.draw.circle(screen, (200, 200, 100), (int(fireball.pos.x * scale),
+                                         int(fireball.pos.y * scale)), int(fireball.radius * scale))
 
-	def draw_target(target):
-		pygame.draw.circle(screen, white, (int(target.pos.x * scale),
-										  int(target.pos.y * scale)), int(target.radius * scale))
+    def draw_target(target):
+        pygame.draw.circle(screen, white, (int(target.pos.x * scale),
+                                          int(target.pos.y * scale)), int(target.radius * scale))
 
-	def draw_meteor(meteor):
-		pygame.draw.circle(screen, pink, (int(meteor.pos.x * scale), int(
-			meteor.pos.y * scale)), int(meteor.attack_radius * scale))
+    def draw_meteor(meteor):
+        pygame.draw.circle(screen, pink, (int(meteor.pos.x * scale), int(
+            meteor.pos.y * scale)), int(meteor.attack_radius * scale))
 
-	def draw_human(human):
-		if human.inv_time > 0:
-			pygame.draw.circle(screen, golden, (int(human.pos.x * scale), int(
-				human.pos.y * scale)), int((fireball_radius) * scale) + 3)
-		if human.faction == 0:
-			pygame.draw.circle(screen, (100, 233, 233), (int(human.pos.x * scale),
-											  int(human.pos.y * scale)), int(fireball_radius * scale + 1))
-		else:
-			pygame.draw.circle(screen, (233, 100, 233), (int(human.pos.x * scale),
-											  int(human.pos.y * scale)), int(fireball_radius * scale + 1))
-		myfont = pygame.font.Font(None, 20)
-		textImage = myfont.render(str(human.hp)+':'+('%.2f' % (human.pos.x))+','+('%.2f' % (human.pos.y)), True, blue)
-		screen.blit(textImage, (human.pos.x * scale, human.pos.y * scale))
-		textImage = myfont.render(str(human.number), True, black)
-		screen.blit(textImage, ((human.pos.x - 5)* scale, (human.pos.y - 5) * scale))
+    def draw_human(human):
+        if human.inv_time > 0:
+            pygame.draw.circle(screen, golden, (int(human.pos.x * scale), int(
+                human.pos.y * scale)), int((fireball_radius) * scale) + 3)
+        color = (233, 100, 233)
+        if human.faction == 0:
+            color = (100, 233, 233)
+        for bonus in bonuses:
+            if human.pos.x == bonus.pos.x and human.pos.y == bonus.pos.y:
+                color = (0, 255, 0)
+        pygame.draw.circle(screen, color, (int(human.pos.x * scale),
+                                      int(human.pos.y * scale)), int(fireball_radius * scale + 1))
+        myfont = pygame.font.Font(None, 20)
+        textImage = myfont.render(str(human.hp)+':'+('%.2f' % (human.pos.x))+','+('%.2f' % (human.pos.y)), True, blue)
+        screen.blit(textImage, (human.pos.x * scale, human.pos.y * scale))
+        textImage = myfont.render(str(human.number), True, black)
+        screen.blit(textImage, ((human.pos.x - 5)* scale, (human.pos.y - 5) * scale))
 
-	def draw_bonus(bonus):
-		pygame.draw.circle(screen, yellow, (int(bonus.pos.x * scale),
-											int(bonus.pos.y * scale)), int(bonus.radius * scale))
-											
-											
-	def rewrite(u, v, q, w, r = 5):
-		for x in range(int(u - r), int(min(u + q, width / room_size))):
-			for y in range(int(v - r), int(min(v + w, height / room_size))):
-				if walls[x][y]:
-			 		draw_wall(x, y)
-				else:
-			 		draw_road(x, y)							  
-											
-	def redraw_ball(fireball):
-		rewrite(fireball.pos.x, fireball.pos.y, 5, 5, 5)
+    def draw_bonus(bonus):
+        pygame.draw.circle(screen, yellow, (int(bonus.pos.x * scale),
+                                            int(bonus.pos.y * scale)), int(bonus.radius * scale))
+                                            
+                                            
+    def rewrite(u, v, q, w, r = 5):
+        for x in range(int(u - r), int(min(u + q, width / room_size))):
+            for y in range(int(v - r), int(min(v + w, height / room_size))):
+                if walls[x][y]:
+                     draw_wall(x, y)
+                else:
+                     draw_road(x, y)                              
+                                            
+    def redraw_ball(fireball):
+        rewrite(fireball.pos.x, fireball.pos.y, 5, 5, 5)
 
-	def redraw_fireball(fireball):
-		rewrite(fireball.pos.x, fireball.pos.y, 5, 5, 5)
+    def redraw_fireball(fireball):
+        rewrite(fireball.pos.x, fireball.pos.y, 5, 5, 5)
 
-	def redraw_target(target):
-		rewrite(target.pos.x, target.pos.y, 5, 5, 5)
+    def redraw_target(target):
+        rewrite(target.pos.x, target.pos.y, 5, 5, 5)
 
-	def redraw_meteor(meteor):
-		rewrite(meteor.pos.x, meteor.pos.y, 5, 5, 5)
-		
-	
-		
+    def redraw_meteor(meteor):
+        rewrite(meteor.pos.x, meteor.pos.y, 5, 5, 5)
+        
+    
+        
 
-	def redraw_human(human):
-		if human.inv_time > 0:
-			pygame.draw.circle(screen, white, (int(human.pos.x * scale), int(
-				human.pos.y * scale)), int((fireball_radius * scale) + 3))
-		pygame.draw.circle(screen, white, (int(human.pos.x * scale),
-										  int(human.pos.y * scale)), int(fireball_radius * scale))
-		# myfont = pygame.font.Font(None, 30)
-		# textImage = myfont.render(str(human.hp), True, white)
-		# screen.blit(textImage, (human.pos.x * scale, human.pos.y * scale))
-		rewrite(human.pos.x, human.pos.y, 60, 8)
-		
-	def redraw_bonus(bonus):
-		pygame.draw.circle(screen, white, (int(bonus.pos.x * scale),
-											int(bonus.pos.y * scale)), int(bonus.radius * scale))
+    def redraw_human(human):
+        if human.inv_time > 0:
+            pygame.draw.circle(screen, white, (int(human.pos.x * scale), int(
+                human.pos.y * scale)), int((fireball_radius * scale) + 3))
+        pygame.draw.circle(screen, white, (int(human.pos.x * scale),
+                                          int(human.pos.y * scale)), int(fireball_radius * scale))
+        # myfont = pygame.font.Font(None, 30)
+        # textImage = myfont.render(str(human.hp), True, white)
+        # screen.blit(textImage, (human.pos.x * scale, human.pos.y * scale))
+        rewrite(human.pos.x, human.pos.y, 60, 8)
+        
+    def redraw_bonus(bonus):
+        pygame.draw.circle(screen, white, (int(bonus.pos.x * scale),
+                                            int(bonus.pos.y * scale)), int(bonus.radius * scale))
 
-	def draw_all(humans, walls, balls, fireballs, meteors, targets, bonuses, score, timecnt):
-		for event in pygame.event.get():
-			if event.type == pygame.QUIT:
-				sys.exit()
-		for target in targets:
-			draw_target(target)
-		for meteor in meteors:
-			draw_meteor(meteor)
-		
-		for human in humans:
-			if human.death_time == -1:
-				draw_human(human)
-		for fireball in fireballs:
-			draw_fireball(fireball)
-		for ball in balls:
-			draw_ball(ball)
-		for bonus in bonuses:
-			if bonus.time == -1:
-				draw_bonus(bonus)
-		for i in (0, 1):
-			myfont = pygame.font.Font(None, 60)
-			color = (100, 100, 255)
-			if i == 1:
-				color = (200, 100, 200)
-			textImage = myfont.render(str(int(score[i])), True, color)
-			screen.blit(textImage, (i * 80 * scale + 80  * scale, 0))
-		for i in (0, 1):
-			myfont = pygame.font.Font(None, 40)
-			textImage = myfont.render(str(int(deli[i])), True, white)
-			screen.blit(textImage, (i * 80 * scale + 120 * scale, 0))
-		for i in (0, 1):
-			myfont = pygame.font.Font(None, 40)
-			textImage = myfont.render(str(int(bonu[i])), True, gray)
-			screen.blit(textImage, (i * 80 * scale + 140 * scale, 0))
-		screen.blit(pygame.font.Font(None, 40).render(str(int(timecnt)), True, white), (0, 0))
-		pygame.display.flip()
-		
-		screen.blit(pygame.font.Font(None, 40).render(str(int(timecnt)), True, black), (0, 0))
+    def draw_all(humans, walls, balls, fireballs, meteors, targets, bonuses, score, timecnt):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+        for target in targets:
+            draw_target(target)
+        for meteor in meteors:
+            draw_meteor(meteor)
+        
+        for human in humans:
+            if human.death_time == -1:
+                draw_human(human)
+        for fireball in fireballs:
+            draw_fireball(fireball)
+        for ball in balls:
+            draw_ball(ball)
+        for bonus in bonuses:
+            if bonus.time == -1:
+                draw_bonus(bonus)
+        for i in (0, 1):
+            myfont = pygame.font.Font(None, 60)
+            color = (100, 100, 255)
+            if i == 1:
+                color = (200, 100, 200)
+            textImage = myfont.render(str(int(score[i])), True, color)
+            screen.blit(textImage, (i * 80 * scale + 80  * scale, 0))
+        for i in (0, 1):
+            myfont = pygame.font.Font(None, 40)
+            textImage = myfont.render(str(int(deli[i])), True, white)
+            screen.blit(textImage, (i * 80 * scale + 120 * scale, 0))
+        for i in (0, 1):
+            myfont = pygame.font.Font(None, 40)
+            textImage = myfont.render(str(int(bonu[i])), True, gray)
+            screen.blit(textImage, (i * 80 * scale + 140 * scale, 0))
+        for i in (0, 1):
+            myfont = pygame.font.Font(None, 20)
+            textImage = myfont.render(str(int(hurted[i])), True, red)
+            screen.blit(textImage, (i * 80 * scale + 75 * scale, 0))
+            
+        screen.blit(pygame.font.Font(None, 40).render(str(int(timecnt)), True, white), (0, 0))
+        
+        pygame.display.flip()
+        
+        screen.blit(pygame.font.Font(None, 40).render(str(int(timecnt)), True, black), (0, 0))
 
-		
-		for i in (0, 1):
-			myfont = pygame.font.Font(None, 60)
-			textImage = myfont.render(str(int(score[i])), True, black)
-			screen.blit(textImage, (i * 80 * scale + 80 * scale, 0))
-		for i in (0, 1):
-			myfont = pygame.font.Font(None, 40)
-			textImage = myfont.render(str(int(deli[i])), True, black)
-			screen.blit(textImage, (i * 80 * scale + 120 * scale, 0))
-		for i in (0, 1):
-			myfont = pygame.font.Font(None, 40)
-			textImage = myfont.render(str(int(bonu[i])), True, black)
-			screen.blit(textImage, (i * 80 * scale + 140 * scale, 0))
-		for target in targets:
-			redraw_target(target)
-		for meteor in meteors:
-			redraw_meteor(meteor)
-		for fireball in fireballs:
-			redraw_fireball(fireball)
-		for ball in balls:
-			redraw_ball(ball)
-		for human in humans:
-			if human.death_time == -1:
-				redraw_human(human)
-		for bonus in bonuses:
-			if bonus.time == -1:
-				redraw_bonus(bonus)
-				
+        
+        for i in (0, 1):
+            myfont = pygame.font.Font(None, 60)
+            textImage = myfont.render(str(int(score[i])), True, black)
+            screen.blit(textImage, (i * 80 * scale + 80 * scale, 0))
+        for i in (0, 1):
+            myfont = pygame.font.Font(None, 40)
+            textImage = myfont.render(str(int(deli[i])), True, black)
+            screen.blit(textImage, (i * 80 * scale + 120 * scale, 0))
+        for i in (0, 1):
+            myfont = pygame.font.Font(None, 40)
+            textImage = myfont.render(str(int(bonu[i])), True, black)
+            screen.blit(textImage, (i * 80 * scale + 140 * scale, 0))
+        for i in (0, 1):
+            myfont = pygame.font.Font(None, 20)
+            textImage = myfont.render(str(int(hurted[i])), True, black)
+            screen.blit(textImage, (i * 80 * scale + 75 * scale, 0))
+        for target in targets:
+            redraw_target(target)
+        for meteor in meteors:
+            redraw_meteor(meteor)
+        for fireball in fireballs:
+            redraw_fireball(fireball)
+        for ball in balls:
+            redraw_ball(ball)
+        for human in humans:
+            if human.death_time == -1:
+                redraw_human(human)
+        for bonus in bonuses:
+            if bonus.time == -1:
+                redraw_bonus(bonus)
+                
 events = []
 logs = []
 humans = [None] * faction_number * human_number
@@ -458,6 +471,7 @@ def fireball_hurt(fireball, human, hurt_record):
         if fireball.from_number % faction_number == human.faction:
             return
     if L2Distance(fireball.pos, human.pos) <= fireball.attack_radius + eps:
+        hurted[human.number % faction_number] += 1
         human.hp -= fireball.hurt
         if fireball.from_number in hurt_record[human.number]:
             hurt_record[human.number][fireball.from_number] += fireball.hurt
@@ -485,6 +499,7 @@ def death(human, hurt_dict):
     human.death_time = frames_of_death
     Ev(3, human.number, round(human.pos.x,precision), round(human.pos.y,precision))
     score[human.faction] += killed_score
+
     sum_hurt = 0
     for h_id, hurt in hurt_dict.items():
         sum_hurt += hurt
@@ -555,17 +570,30 @@ def goal(ball):
 def getbonus(bonus):
     mindis = 1e9
     num = -1
+    both = 0
     for human in humans:
         if human.death_time==-1:
             Dis = L2Distance(human.pos,bonus.pos)
             if Dis < mindis:
                 mindis = Dis
                 num = human.number
-            elif Dis == mindis:
-                if score[num % faction_number] < score[human.faction]:
-                    num = human.number
+                both = 0
+            elif Dis == mindis and score[num % faction_number] < score[human.faction]:
+                num = human.number
+                both = 0
+            elif Dis == mindis and score[num % faction_number] == score[human.faction]:
+                if num % faction_number != human.faction:
+                    both = 1
+                
     if mindis < bonus.radius + eps:
-        score[num%faction_number]+=bonus_score
+        if both:
+            score[0]+=bonus_score / 2
+            score[1]+=bonus_score / 2
+            bonu[0] += 0.5
+            bonu[1] += 0.5
+        else:
+            score[num%faction_number]+=bonus_score
+            bonu[num % faction_number] += 1
         bonus.reset()
         Ev(12, num,bonus.number)
 
@@ -800,7 +828,7 @@ def RunGame():
         replay_dir = "." + os.sep + "Replay" + os.sep
         if not os.path.exists(replay_dir):
             os.mkdir(replay_dir)
-        replay_dir += "replay{1}-{2}.zip".format(str(int(score[0])), str(int(score[1])))
+        replay_dir += "replay{}.zip".format(test_num)
     else:
         replay_dir = save_dir
     name = replay_dir[replay_dir.rfind('/')+1:]

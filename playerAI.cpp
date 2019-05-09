@@ -59,20 +59,26 @@ int attack[hunum];
 bool is_guard[hunum], no_flash[hunum], nofire[hunum];
 int belonger, enbelong;
 
-
+double goalr[hunum];
 double dodge_ratio[hunum];
 
 vector <point> history[hunum]; // enemy history
 int enholdfire[hunum];
-const int maxHistory = 20;
+const int maxHistory = 16;
 const int rand_times = 266;
 
+int frame = 0;
 void frame_before() {
 	
+	if (frame != logic->frame - 1) {
+		logic->debug("Skipped frame : " + to_string(frame) + " " + to_string(logic->frame) + "\n");
+	}
+	frame = logic->frame;
+
 	logic->debug("");
 
-
 	for (int i = 0; i < hunum; i++) goal[i] = Move[i] = Shoot[i] = Meteor[i] = Illegal;
+	for (int i = 0; i < hunum; i++) goalr[i] = 0; 
 	for (int i = 0; i < hunum; i++) attack[i] = -1, is_guard[i] = 0;
 	for (int i = 0; i < hunum; i++) no_flash[i] = 0, nofire[i] = 0;
 	for (int i = 0; i < hunum; i++) dodge_ratio[i] = 1;
@@ -137,26 +143,104 @@ void move(int i, point p) { // auto flash
 	}
 }
 
+
+// debug
+//
+int maxadj = 0;
+
 void shoot(int i, const point &p) {
-	if (nofire[i]) return;
-	if ((Move[i] - p).len() < 3) return;
-	logic->shoot(i, p);
-	Shoot[i] = p;
+	if (nofire[i] || !canfire[i]) return;
+	
+	point dir = (p - Move[i]);
+	if (dir.len() < 2) return;
+
+	dir = dir.unit();
+
+	int best = 0;
+	double dis = 1e9;
+	for (int d = -0; d <= 0; d += 1) {
+		point dd = dir.turn(d);
+		double tmp = 1e9;
+		point x = Move[i] + dd * 3; 
+		if (!Legal(x)) continue;
+		for ( ; Legal(x); x = x + dd) {
+			tmp = min(tmp, (x - p).len());
+		}
+		if (tmp < dis) {
+			dis = tmp;
+			best = d;
+		}
+	}
+	if (dis > 10) {
+		for (int d = -100; d < -40; d += 4) {
+			point dd = dir.turn(d);
+			double tmp = 1e9;
+			point x = Move[i] + dd * 3; 
+			if (!Legal(x)) continue;
+			for ( ; Legal(x); x = x + dd) {
+				tmp = min(tmp, (x - p).len());
+			}
+			if (tmp < dis) {
+				dis = tmp;
+				best = d;
+			}
+		}
+		for (int d = -40; d <= 40; d += 1) {
+			point dd = dir.turn(d);
+			double tmp = 1e9;
+			point x = Move[i] + dd * 3; 
+			if (!Legal(x)) continue;
+			for ( ; Legal(x); x = x + dd) {
+				tmp = min(tmp, (x - p).len());
+			}
+			if (tmp < dis) {
+				dis = tmp;
+				best = d;
+			}
+		}
+		for (int d = 44; d <= 100; d += 4) {
+			point dd = dir.turn(d);
+			double tmp = 1e9;
+			point x = Move[i] + dd * 3; 
+			if (!Legal(x)) continue;
+			for ( ; Legal(x); x = x + dd) {
+				tmp = min(tmp, (x - p).len());
+			}
+			if (tmp < dis) {
+				dis = tmp;
+				best = d;
+			}
+		}
+	}
+	Shoot[i] = Move[i] + dir.turn(best) * 3;
+	logic->shoot(i, Shoot[i]);
+	maxadj = max(maxadj, abs(best));
+/*	if (best != 0) {
+		logic->debugAppend("adjusted : " + to_string(i) + " : " + to_string(dir.turn(best).x) + ", " + to_string(dir.turn(best).y) + " : "  + to_string(dir.x) + ", " + to_string(dir.y) + "\n");
+	}*/
 }
 
 void meteor(int i, const point &p) {
+	if ((p - Move[i]).len() > meteor_distance) {
+		return;
+	}
+	if (is_guard[i] && (frame - 250) % (8 * frames_per_second) !=  (8 * frames_per_second) - meteor_delay) {
+		return;
+	}
 	logic->meteor(i, p);
 	Meteor[i] = p;
 }
 
 
-point forecast(int i, int step) {
+point forecast(int i, int step, point aux = Illegal) {
 	if (i == -1) return Illegal;
 	point dir(0, 0);
-	if (step < 5 || history[i].size() < maxHistory) return enpos[i];
+	if (history[i].size() < maxHistory) {
+		return enpos[i];
+	}
 
 	point ed(0, 0), st(0, 0);
-	int sample = maxHistory / 4, dis = maxHistory - sample;
+	int sample = 5, dis = maxHistory - sample;
 	for (int j = 0; j < sample; j++) {
 		ed = ed + history[i][j];
 		st = st + history[i][j + dis];
@@ -168,12 +252,39 @@ point forecast(int i, int step) {
 /*	dir = (history[i].front() - history[i].back()) / (maxHistory - 1);*/
 
 	if (dir.len() > human_velocity) dir = dir.unit() * human_velocity;
-	if (dir.len() < human_velocity / 3) dir = point(0, 0);
-	
+	if (dir.len() < human_velocity / 3) dir = {0, 0};
+
 	point ans = enpos[i];
-	for ( ; step-- >= 0; ) {
-		if (Legal(ans + dir)) ans = ans + dir;
-		else break;
+
+	if (i == enbelong) {
+		if (step != -1) {
+			for ( ; step-- > 0; ) {
+				point ret = go_to(ans, targ[enemy], 0.5);
+				if (Legal(ret)) ans = ret;
+				else break;
+			}
+		}
+		else {
+			for (int t = 2; (ans - aux).len() > 3 * t; t++) {
+				point ret = go_to(ans, targ[enemy], 0.5);
+				if (Legal(ret)) ans = ret;
+				else break;
+			}
+		}
+	}
+	else if (step != -1) {
+		for ( ; step-- > 0; ) {
+			point ret = ans + dir;
+			if (Legal(ret)) ans = ret;
+			else break;
+		}
+	}
+	else {
+		for (int t = 2; (ans - aux).len() > 3 * t; t++) {
+			point ret = ans + dir;
+			if (Legal(ret)) ans = ret;
+			else break;
+		}
 	}
 	return ans;
 }
@@ -184,8 +295,9 @@ int find_enemy(point x) {
 	for (int i = 0; i < hunum; i++) if (!endead[i]){
 		go_to(x, enpos[i]);
 		double tmp = last_go_to_dis;
-		if (direct(x, enpos[i], 9999, 3) != Illegal) tmp *= 0.5;
-		if (i == enbelong) tmp *= 0.7;
+		if (direct(x, enpos[i], 9999, 3) != Illegal) tmp *= 0.8;
+		if (i == enbelong) tmp *= 0.8;
+		tmp *= log(getHuman(enemy, i).hp);
 		if (tmp < dis) att = i, dis = tmp;
 	}
 	return att;
@@ -216,45 +328,19 @@ void get_bonus(int bonus_id, int p) {
 	if ((mypos[p] - b).len() < bonus_radius + EP) {
 		is_guard[p] = 1;
 		int tar = has_enemy(b, bonus_radius);
-		dodge_ratio[p] = 15;
+		dodge_ratio[p] = 6;
 		if (tar != -1) {
-			if (canflash[p] && canfire[p] && getHuman(ally, p).hp > getHuman(enemy, tar).hp) {
-				point ans = enpos[tar] + point(4.8, 0).turn(Rand(0, 359));
-				// flash
-				for (int t = 0; t < rand_times; t++) {
-					point x = enpos[tar] + point(4.8, 0).turn(Rand(0, 359));
-					if (Legal(x) && ((ans - b).len() > (x - b).len() || !Legal(ans))) ans = x;
-				}
-				goal[p] = ans;
+			if (canflash[p] && canfire[p] && getHuman(ally, p).hp > getHuman(enemy, tar).hp * 2) {
+				goal[p] = enpos[tar];
+				goalr[p] = 4.8;
 			}
-		/*	else if (canfire[p] && (enholdfire[tar] > 4 || (getHuman(enemy, tar).fire_time > 4))){
-				no_flash[p] = 1;
-				point ans = enpos[tar] + point(4.8, 0).turn(Rand(0, 359));
-				for (int t = 0; t < rand_times; t++) {
-					point x = enpos[tar] + point(4.8, 0).turn(Rand(0, 359));
-					if (Legal(x) && (abs((ans - mypos[p]).len() - human_velocity) > abs((x - mypos[p]).len() - human_velocity) || !Legal(ans))) {
-						ans = x;
-					}
-				}
-				goal[p] = ans;
-			}*/
 			else {
-				point ans = enpos[tar] + point(2.5, 0).turn(Rand(0, 359)) * (Rand(0, 100) / 100.);
-				if (Legal(b) && (b - enpos[tar]).len() < 2.5 && (b - mypos[p]).len() < max(human_velocity + EP, (ans - mypos[p]).len())) {
-					ans = b;
-				}
-				for (int t = 0; t < rand_times; t++) {
-					point x = enpos[tar] + point(2.5, 0).turn(Rand(0, 359)) * (Rand(0, 100) / 100.);
-					if (Legal(x) && (x - mypos[p]).len() < max(human_velocity + EP, (ans - mypos[p]).len()) && (x - b).len() < (ans - b).len()) {
-						ans = x;
-					}
-				}
-				goal[p] = ans;
+				goal[p] = enpos[tar];
+				goalr[p] = 2.5;
 			}
 			if (!Legal(goal[p])) goal[p] = b;
 		}
 		else {
-			dodge_ratio[p] = 2;
 			no_flash[p] = 1;
 			goal[p] = b;
 		}
@@ -267,14 +353,7 @@ void get_bonus(int bonus_id, int p) {
 void suicide(int i, point ff = Illegal) {
 	if (!Legal(ff)) ff = ff_enemy(mypos[i]); 
 	goal[i] = ff;
-	if ((goal[i] - mypos[i]).len() < 9) {
-		for (int t = 0; t < 360; t++) {
-			point dir = goal[i] + point(6.98, 0).turn(t);
-			if (Legal(dir) && (!Legal(goal[i]) || abs((goal[i] - mypos[i]).len() - human_velocity) > abs((dir - mypos[i]).len() - human_velocity))) {
-				goal[i] = dir;
-			}
-		}
-	}
+	goalr[i] = 7;
 }
 
 void get_crystal(vector <int> squad) {
@@ -336,8 +415,8 @@ void get_crystal(vector <int> squad) {
 		}
 	}
 
-	for (int k = 0; (k <= 1 && (logic->frame < 800 || (logic->frame > 5500 && far))); k++) {
-		int tar = has_enemy(map.bonus_places[mybonus ^ k], bonus_radius * 2);
+/*	for (int k = 0; (k <= 1 && (logic->frame < 800 || (logic->frame > 5500 && far))); k++) {
+		int tar = has_enemy(map.bonus_places[mybonus ^ k], bonus_radius * 5);
 		if ((logic->frame < 300 || tar != -1)) {
 			int to = -1;
 			for (auto v : squad) if (v != belonger) {
@@ -349,7 +428,7 @@ void get_crystal(vector <int> squad) {
 			else suicide(to, ff_enemy(map.bonus_places[mybonus ^ k]));
 		}
 	}
-
+*/
 /*
 	if (belonger != -1) {
 		// Protect crystal belonger
@@ -386,29 +465,43 @@ double Score(int id, point x) {
 	double ret = 0;
 
 	// keepmoving
-	bool nomove = 0;
-	if (is_guard[id]) {
-		bool flag = 0;
-		for (int i = 0; i < 2; i++) {
-			if ((goal[id] - (map.bonus_places[i])).len() < bonus_radius) {
-				if (has_enemy(map.bonus_places[i], bonus_radius) != -1) {
-					ret -= (x == goal[id]) * 0.2;
-					nomove = 1;
+	{
+		double dis = -1;
+		if (Legal(goal[id])) {
+			go_to(x, goal[id]);
+			dis = last_go_to_dis;
+		}
+		else {
+			dis = (goal[id] - x).len();
+		}
+
+		bool nomove = 0;
+		if (is_guard[id]) {
+			bool flag = 0;
+			for (int i = 0; i < 2; i++) {
+				if ((goal[id] - (map.bonus_places[i])).len() < bonus_radius) {
+					flag = 1;
+					ret += dis * (dis > goalr[id] ? 1.5 : 0.01);
+					ret += (map.bonus_places[i] - x).len() * 1;
+					if (has_enemy(map.bonus_places[i], bonus_radius) != -1) {
+						ret -= ((map.bonus_places[i] - x).len() < EP) * 0.2;
+						ret -= ((enpos[has_enemy(map.bonus_places[i], bonus_radius)] - map.bonus_places[i]).len() > (x - map.bonus_places[i]).len()) * 0.2;
+						nomove = 1;
+					}
+					break;
 				}
-				break;
+			}
+			if (!flag) {
+				ret += abs(dis - goalr[id]);
 			}
 		}
-	}
-	if (!nomove) {
-		ret -= (x - mypos[id]).len() * dodge_ratio[id] * .05;
-	}
-	
-	if (Legal(goal[id])) {
-		go_to(x, goal[id]);
-		ret += last_go_to_dis;
-	}
-	else {
-		ret += (goal[id] - x).len();
+		else {
+			ret += abs(dis - goalr[id]);
+		}
+
+		if (!nomove) {
+			ret -= (x - mypos[id]).len() * dodge_ratio[id] * .05;
+		}
 	}
 
 	// away from ally
@@ -418,13 +511,13 @@ double Score(int id, point x) {
 			ret += max(0., (fireball_radius - dis)) * dodge_ratio[id] * .2;
 		}
 		// away from wall
-		ret += max(0., fireball_radius * 2 - (x - point(disw[int(x.x)][int(x.y)])).len()) * .1;
+		ret += max(0., fireball_radius * 2 - (x - point(disw[int(x.x)][int(x.y)])).len()) * dodge_ratio[id] * .1;
 	}
 
 	// away from enemy
 	if (!is_guard[id]) for (int i = 0; i < 5; i++) if (!endead[i]) {
 		double dis = (enpos[i] - x).len();
-		ret += max(0., 20 - dis) * .05; // danger zone
+		ret += max(0., min(min(20 - dis, dis - 3), abs(dis - 6))) * .05 * dodge_ratio[id]; // danger zone
 	}
 	
 	// XXX : test if non-linear system works
@@ -443,7 +536,7 @@ double Score(int id, point x) {
 			else if (dis < fireball_radius) {
 				hurt = max(hurt, ((nowr + human_velocity > dis ? 6 : 2) + pow(fireball_radius - dis, 2)) * ((15 - t) / 10.));
 			}
-			else if (dis < fireball_radius + human_velocity * 3) {
+			else if (dis < fireball_radius + human_velocity * 3 && !is_guard[id]) {
 				hurt = max(hurt, .5 * ((10 - t) / 8.) * (fireball_radius + human_velocity * 3 - dis));
 			}
 			nowr -= human_velocity;
@@ -462,8 +555,8 @@ double Score(int id, point x) {
 		else if (dis < explode_radius + EP) {
 			ret += (nowr + human_velocity > dis ? 10 : 5) + pow(15 - v.last_time, 2) * (explode_radius - dis);
 		}
-		else if (dis < explode_radius +  human_velocity * 3) {
-			ret += .5 * ((15 - v.last_time) / 5.) * (explode_radius + human_velocity * 3 - dis);
+		else if (dis < explode_radius +  human_velocity * 3 && !is_guard[id]) {
+			ret += .3 * ((15 - v.last_time) / 5.) * (explode_radius + human_velocity * 3 - dis);
 		}
 	}
 	return ret;
@@ -498,44 +591,73 @@ void adjust_movement() {
 			}
 		}
 
-		double sc = Score(i, Move[i]);
-		point dir = Move[i] - mypos[i];
-		if (dir.len() > .1) { 
-			// Change direction a little, but not change length
-			for (int d = -30; d <= 30; d += 2) if (d != 0) {
-				point p = mypos[i] + dir.turn(d);
-				double tmp = Score(i, p);
-				if (tmp < sc) sc = tmp, Move[i] = p;
-			}
-		}
-		
-		dir = point(human_velocity, 0);
+		double sc = Score(i, Move[i]), tmp;
+
+		if ((tmp = Score(i, mypos[i])) < sc) sc = tmp, Move[i] = mypos[i]; 
+
+		point dir = point(human_velocity, 0);
 
 		for (int d = 0; d < 360; d += 3) {
 			point p = mypos[i] + dir.turn(d);
-			double tmp = Score(i, p);
+			tmp = Score(i, p);
 			if (tmp < sc) sc = tmp, Move[i] = p;
 		}
 
 		for (int t = 0; t < rand_times; t++) {
-			point p = mypos[i] + dir.turn(Rand(0, 359)) * (Rand(20, 100) / 100.);
-			double tmp = Score(i, p);
+			point p = mypos[i] + dir.turn(Rand(0, 359)) * (Rand(1, 20) / 20.);
+			tmp = Score(i, p);
 			if (tmp < sc) sc = tmp, Move[i] = p;
+		}
+		if (is_guard[i]) {	
+			for (int b = 0; b < 2; b++) if ((mypos[i] - map.bonus_places[b]).len() < bonus_radius) {
+				double dis = (mypos[i] - map.bonus_places[b]).len();
+				point p = map.bonus_places[b];
+				if (dis > human_velocity) {
+					p = mypos[i] * ((dis - human_velocity) / dis) + p * (human_velocity / dis);
+				}
+				logic->debugAppend(to_string(p.x) + ","+ to_string(p.y) + "\n");
+				tmp = Score(i, p);
+				logic->debugAppend(to_string(tmp) + ",");
+				logic->debugAppend(to_string(sc));
+				if (tmp < sc) sc = tmp, Move[i] = p;
+			}
 		}
 
 		if (!no_flash[i] && canflash[i]) {
 			dir = dir.unit() * flash_distance;
-			for (int d = 2; d < 360; d += 3) {
+			for (int d = 2; d < 360; d += 2) {
 				point p = mypos[i] + dir.turn(d);
-				double tmp = Score(i, p);
+				tmp = Score(i, p);
 				if (tmp < sc) sc = tmp, Move[i] = p;
 			}
 			for (int t = 0; t < rand_times * 2; t++) {
-				point p = mypos[i] + dir.turn(Rand(0, 359)) * (Rand(20, 100) / 100.);
-				double tmp = Score(i, p);
+				point p = mypos[i] + dir.turn(Rand(0, 359)) * (Rand(1, 40) / 40.);
+				tmp = Score(i, p);
+				if (tmp < sc) sc = tmp, Move[i] = p;
+			}
+			
+			for (int b = 0; b < 2; b++) if ((mypos[i] - map.bonus_places[b]).len() < flash_distance) {
+				point p = map.bonus_places[b];
+				tmp = Score(i, p);
 				if (tmp < sc) sc = tmp, Move[i] = p;
 			}
 		}
+
+		if (goalr[i] > 0) {
+			point p;
+			for (int t = 0; t < rand_times * 2; t++) {
+				if (is_guard[i]) {
+					p = goal[i] + point(goalr[i], 0) * (Rand(1, 10) / 10.);
+				}
+				else {
+					p = goal[i] + point(goalr[i], 0);
+				}
+				if ((p - mypos[i]).len() > human_velocity) continue;
+				tmp = Score(i, p);
+				if (tmp < sc) sc = tmp, Move[i] = p;
+			}
+		}
+
 //		logic->debugAppend(to_string(i) + " : " + to_string(sc) + "\n");
 	}
 
@@ -566,8 +688,12 @@ void damage() {
 
 	for (int i = 0; i < hunum; i++) {
 		point my = Move[i], att = enpos[attack[i]];
-		shoot(i, forecast(attack[i], 1 + int((att - my).len() / fireball_velocity)));
+		shoot(i, forecast(attack[i], -1, my));
 		meteor(i, forecast(attack[i], meteor_delay));
+		if (is_guard[i]) {
+			meteor(i, map.bonus_places[0]);
+			meteor(i, map.bonus_places[1]);
+		}
 	}
 }
 
@@ -579,15 +705,16 @@ void solve() {
 
 	frame_before();
 
-	get_bonus(0, mybonus);
-	get_bonus(1, mybonus ^ 1);
+	get_bonus(0, 0);
+	get_bonus(1, 1);
 	get_crystal({2, 3, 4});
 	adjust_movement();
 	damage();	
 
 	frame_after();
+	
+	logic->debugAppend("max. " + to_string(maxadj) + " \n");
 
-	logic->debug("");
 	logic->debugAppend(to_string((clock() - st) / double(CLOCKS_PER_SEC)));
 }
 

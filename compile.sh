@@ -1,1 +1,1 @@
-make clean && make && cp ./main.out ./AI-For-DoorKickers--xtx/main.exe
+make && cp ./main.out ./AI-For-DoorKickers--xtx/main.exe
