@@ -124,6 +124,9 @@ void readMap() {
 	}
 
 	logic->initMap(width, height, faction_number, human_number, birth_places, ball_places, target_places, bonus_places, pixels, time_of_game);
+	
+//	Json::Value pixels_raw = root["walls"];
+	logic->score[0] = logic->score[1] = 0;
 }
 
 void readFrame() {
@@ -181,6 +184,9 @@ void readFrame() {
 	}
 
 	Logic::Instance()->getFrame(frame, humans, fireballs, meteors, crystal, bonus);
+	Json::Value score_raw = root["scores"];
+	Logic::Instance()->score[0] = score_raw[0].asDouble();
+	Logic::Instance()->score[1] = score_raw[1].asDouble();
 }
 
 void readOnce() {
@@ -343,6 +349,9 @@ void keepread() {
 			for (int i = 0; i < bonus_raw.size(); i++) {
 				bonus.push_back(bonus_raw[i].asBool());
 			}
+			Json::Value score_raw = root["scores"];
+			Logic::Instance()->score[0] = score_raw[0].asDouble();
+			Logic::Instance()->score[1] = score_raw[1].asDouble();
 
 			mut.unlock();
 		}

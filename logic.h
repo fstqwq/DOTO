@@ -112,6 +112,7 @@ private:
 	Logic(Logic const&) {};
 public:
 	int frame;//现在的帧数
+	double score[2];
 	Map map;//地图
 	int faction;//自己的编号
 	//vector<Wall> walls;
