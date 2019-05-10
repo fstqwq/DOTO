@@ -66,7 +66,7 @@ double dodge_ratio[hunum];
 vector <point> history[hunum]; // enemy history
 int enholdfire[hunum];
 const int maxHistory = 18;
-const int rand_times = 266;
+const int rand_times = 233;
 
 int frame = 0;
 
@@ -730,10 +730,10 @@ double Score(int id, point x) {
 	if (nowfir.size() || nowmet.size()) {
 		for (int i = 0; i < 5; i++) if (!mydead[i] && i != id) {
 			double dis = (Move[i] - x).len();
-			ret += max(0., (fireball_radius * 1.5 - dis)) * dodge_ratio[id] * .3;
+			ret += max(0., (fireball_radius * 2 - dis)) * dodge_ratio[id] * .3;
 		}
 		// away from wall
-		ret += max(0., fireball_radius * 2 - (x - point(disw[int(x.x)][int(x.y)])).len()) * dodge_ratio[id] * .05;
+	//	ret += max(0., fireball_radius * 2 - (x - point(disw[int(x.x)][int(x.y)])).len()) * dodge_ratio[id] * .05;
 	}
 
 	// away from enemy
@@ -829,7 +829,7 @@ void adjust_movement() {
 
 		point dir = point(human_velocity, 0);
 
-		for (int d = 0; d < 360; d += 3) {
+		for (int d = 0; d < 360; d += 4) {
 			point p = mypos[i] + dir.turn(d);
 			tmp = Score(i, p);
 			if (tmp < sc) sc = tmp, Move[i] = p;
@@ -857,7 +857,7 @@ void adjust_movement() {
 
 		if (!no_flash[i] && canflash[i]) {
 			dir = dir.unit() * flash_distance;
-			for (int d = 2; d < 360; d += 2) {
+			for (int d = 0; d < 360; d += 4) {
 				point p = mypos[i] + dir.turn(d);
 				tmp = Score(i, p);
 				if (tmp < sc) sc = tmp, Move[i] = p;
@@ -877,7 +877,7 @@ void adjust_movement() {
 
 		if (goalr[i] > 0) {
 			point p;
-			for (int t = 0; t < rand_times * 2; t++) {
+			for (int t = 0; t < rand_times; t++) {
 				if (is_guard[i]) {
 					p = goal[i] + point(goalr[i], 0) * (Rand(1, 10) / 10.);
 				}
@@ -1007,14 +1007,14 @@ void _131() {
 	cnt = logic->score[ally] >= logic->score[enemy] ? max(cnt - 1, 0) : min(cnt + 1, 1200);
 	static int bc[2] = {0, 0};
 	for (int i = 0; i < 2; i++) {
-		if ((ff_enemy(map.bonus_places[i]) - map.bonus_places[i]).len() < 0.1) {
+		if ((ff_enemy(map.bonus_places[i]) - map.bonus_places[i]).len() < 3) {
 			bc[i] = 0;
 		}
 		else {
 			bc[i] ++;
 		}
 	}
-	if (cnt < 400) {
+	if (cnt < 600) {
 		get_bonus(0, 0);
 		get_bonus(1, 1);
 		get_crystal_3({2, 3, 4});
@@ -1022,7 +1022,7 @@ void _131() {
 	else {
 		vector <int> squad = {2, 3, 4};
 		for (int i = 0; i < 2; i++) {
-			if (bc[i] < 50) squad.push_back(i);
+			if (bc[i] < 60) squad.push_back(i);
 			else {
 				get_bonus(i, i);
 			}
