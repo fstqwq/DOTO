@@ -53,7 +53,7 @@ point goal[hunum], Move[hunum], Shoot[hunum], Meteor[hunum];
 point mypos[hunum], enpos[hunum];
 bool mydead[hunum], endead[hunum];
 bool canflash[hunum], canfire[hunum];
-
+bool softr[hunum];
 int attack[hunum];
 bool is_guard[hunum], no_flash[hunum], nofire[hunum];
 int belonger, enbelong;
@@ -70,7 +70,6 @@ int frame = 0;
 
 stringstream debug;
 
-
 void frame_before() {
 	debug.str("");
 
@@ -83,6 +82,7 @@ void frame_before() {
 	for (int i = 0; i < 2; i++) crys[i] = crystal[i].position;
 	for (int i = 0; i < hunum; i++) goal[i] = Move[i] = Shoot[i] = Meteor[i] = Illegal;
 	for (int i = 0; i < hunum; i++) goalr[i] = 0; 
+	for (int i = 0; i < hunum; i++) softr[i] = 0;
 	for (int i = 0; i < hunum; i++) attack[i] = -1, is_guard[i] = 0;
 	for (int i = 0; i < hunum; i++) no_flash[i] = 0, nofire[i] = 0;
 	for (int i = 0; i < hunum; i++) dodge_ratio[i] = 1;
@@ -228,7 +228,7 @@ void meteor(int i, const point &p) {
 	if ((p - Move[i]).len() > meteor_distance) {
 		return;
 	}
-	if (is_guard[i] && (frame - 250) % (8 * frames_per_second) !=  (8 * frames_per_second) - meteor_delay) {
+	if (is_guard[i] && (frame - 250) % (8 * frames_per_second) !=  (8 * frames_per_second) - meteor_delay / 2) {
 		return;
 	}
 	logic->meteor(i, p);
@@ -404,8 +404,13 @@ void get_bonus(int p, int bonus_id) {
 				goalr[p] = 5.201;
 			}
 			else */{
-				goal[p] = enpos[tar];
-				goalr[p] = 2.5;
+				if ((enpos[tar] - b).len() < 1.5) {
+					goal[p] = b;
+				}
+				else {
+					goal[p] = enpos[tar];
+					goalr[p] = 2.5;
+				}
 			}
 			if (!Legal(goal[p])) goal[p] = b;
 		}
@@ -428,17 +433,34 @@ void get_crystal_3(vector <int> squad) {
 	point cp = crystal[enemy].position;
 	bool far = (cp - targ[ally]).len() * 2 > (cp - targ[enemy]).len();
 	if (far && (belonger == -1 || (ff_enemy(mypos[belonger]) - mypos[belonger]).len() < (targ[ally] - mypos[belonger]).len())) {
-		for (auto i : squad) if (!mydead[i]) {
+		int best = squad.front();
+		for (auto i : squad) {
 			if (i == belonger) {
-				goal[i] = targ[ally];
+				best = i;
+				break;
+			}
+			else if ((mypos[i] - cp).len() < (mypos[best] - cp).len()) {
+				best = i;
+			}
+		}
+	
+		for (auto i : squad) if (!mydead[i]) {
+			if (i == best) {
+				if (i == belonger) {
+					goal[i] = targ[ally];
+				}
+				else {
+					goal[i] = cp;
+				}
 			}
 			else {
 				goal[i] = cp;
-				if (enbelong != -1 && ((enpos[enbelong] - mypos[i]).len() < 50)) {
+				if (enbelong != -1 && ((enpos[enbelong] - mypos[i]).len() < 20)) {
 					suicide(i, enpos[enbelong]);
 				}	
 				else if (belonger != -1) {
 					goalr[i] = fireball_radius * 2;
+					softr[i] = 1;
 				}
 			}
 		}
@@ -464,19 +486,22 @@ void get_crystal_3(vector <int> squad) {
 				}
 			}
 			else {
-				if (enbelong != -1 && ((enpos[enbelong] - mypos[i]).len() < 50)) {
+				bool arranged = 0;
+				if (enbelong != -1 && ((enpos[enbelong] - mypos[i]).len() < 20)) {
 					suicide(i, enpos[enbelong]);
 				}
-				else if ((ff_enemy(mypos[i]) - mypos[i]).len() < 10) {
+				else if (arranged && (ff_enemy(mypos[i]) - mypos[i]).len() < 10) {
 					suicide(i);
 				}
-				else if (belonger != -1 && dis_to(ff_enemy(mypos[belonger]), targ[ally]) < dis_to(mypos[belonger], targ[ally])) {
+				else if (arranged && (belonger != -1 && dis_to(ff_enemy(mypos[belonger]), targ[ally]) < dis_to(mypos[belonger], targ[ally]))) {
 					goal[i] = cp;
 					if (belonger != -1) {
 						goalr[i] = fireball_radius * 2;
+						softr[i] = 1;
 					}
 				}
 				else {
+					arranged = 1;
 					goal[i] = targ[enemy];
 					point dir;
 					for (int d = int((mypos[best] - targ[ally]).len() / 5 + 0.5);
@@ -538,29 +563,34 @@ void get_crystal_4(vector <int> squad) {
 	point cp = crystal[enemy].position;
 	bool far = (cp - targ[ally]).len() * 2 > (cp - targ[enemy]).len();
 	if (far && (belonger == -1 || dis_to(ff_enemy(mypos[belonger]), mypos[belonger]) < dis_to(targ[ally], mypos[belonger]))) {
-		for (auto i : squad) if (!mydead[i]) {
+
+		int best = squad.front();
+		for (auto i : squad) {
 			if (i == belonger) {
-				goal[i] = targ[ally];
+				best = i;
+				break;
 			}
-			else {
-				if (enbelong != -1 && ((enpos[enbelong] - mypos[i]).len() < 50)) {
-					suicide(i, enpos[enbelong]);
-				}
-				else if ((ff_enemy(mypos[i]) - mypos[i]).len() < 10) {
-					suicide(i);	
+			else if ((mypos[i] - cp).len() < (mypos[best] - cp).len()) {
+				best = i;
+			}
+		}
+	
+		for (auto i : squad) if (!mydead[i]) {
+			if (i == best) {
+				if (i == belonger) {
+					goal[i] = targ[ally];
 				}
 				else {
 					goal[i] = cp;
-					if (belonger != -1) {
-						goalr[i] = fireball_radius * 2;
-					}
-					/*
-					 for (int t = 0; t < rand_times; t++) {
-						point x = cp + point(fireball_radius * 2, 0).turn(Rand(0, 359));
-						if (Legal(x) && (abs((goal[i] - mypos[i]).len() - human_velocity) > abs((x - mypos[i]).len() - human_velocity) || !Legal(goal[i]))) {
-								goal[i] = x;
-						}
-					}*/
+				}
+			}
+			else {
+				goal[i] = cp;
+				if (enbelong != -1 && ((enpos[enbelong] - mypos[i]).len() < 50)) {
+					suicide(i, enpos[enbelong]);
+				}	
+				else if (belonger != -1) {
+					goalr[i] = fireball_radius * 2;
 				}
 			}
 		}
@@ -586,19 +616,21 @@ void get_crystal_4(vector <int> squad) {
 				}
 			}
 			else {
-				bool guard = 0;
-				if (enbelong != -1 && ((enpos[enbelong] - mypos[i]).len() < 80)) {
+				bool arranged = 0;
+				if (enbelong != -1 && ((enpos[enbelong] - mypos[i]).len() < 60)) {
 					suicide(i, enpos[enbelong]);
 				}
-				else if ((ff_enemy(mypos[i]) - mypos[i]).len() < 70) {
-					suicide(i);	
+				else if (arranged && (ff_enemy(mypos[i]) - mypos[i]).len() < 40) {
+					suicide(i);
 				}
-			/*	else if (!guard) {
+				else if (arranged && (belonger != -1 && dis_to(ff_enemy(mypos[belonger]), targ[ally]) < dis_to(mypos[belonger], targ[ally]))) {
 					goal[i] = cp;
-					goalr[i] = fireball_radius * 2;
-					guard = 1;
-				}*/	
+					if (belonger != -1) {
+						goalr[i] = fireball_radius * 2;
+					}
+				}
 				else {
+					arranged = 1;
 					goal[i] = targ[enemy];
 					point dir;
 					for (int d = int((mypos[best] - targ[ally]).len() / 5 + 0.5);
@@ -640,10 +672,10 @@ double Score(int id, point x) {
 				if ((goal[id] - (map.bonus_places[i])).len() < bonus_radius) {
 					flag = 1;
 					ret += dis * (dis > goalr[id] ? 1.5 : 0.01);
-					ret += (map.bonus_places[i] - x).len() * 1.5;
+					ret += (map.bonus_places[i] - x).len() * 0.5;
 					if (has_enemy(map.bonus_places[i], bonus_radius) != -1) {
-						ret -= ((map.bonus_places[i] - x).len() < EP) * 0.4;
-						ret -= ((enpos[has_enemy(map.bonus_places[i], bonus_radius)] - map.bonus_places[i]).len() > (x - map.bonus_places[i]).len()) * 0.2;
+						ret -= ((map.bonus_places[i] - x).len() < EP) * 0.1;
+						ret -= ((enpos[has_enemy(map.bonus_places[i], bonus_radius)] - map.bonus_places[i]).len() >= (x - map.bonus_places[i]).len()) * 0.2;
 						nomove = 1;
 					}
 					break;
@@ -654,7 +686,12 @@ double Score(int id, point x) {
 			}
 		}
 		else {
-			ret += abs(dis - goalr[id]);
+			if (softr[id]) {
+				ret += max(0.,  dis - goalr[id]) / 2 - dis_to(x, targ[ally]) * 0.01;
+			}
+			else {
+				ret += abs(dis - goalr[id]);
+			}
 		}
 
 		if (!nomove) {
@@ -666,10 +703,10 @@ double Score(int id, point x) {
 	if (nowfir.size() || nowmet.size()) {
 		for (int i = 0; i < 5; i++) if (!mydead[i] && i != id) {
 			double dis = (Move[i] - x).len();
-			ret += max(0., (fireball_radius - dis)) * dodge_ratio[id] * .4;
+			ret += max(0., (fireball_radius * 1.5 - dis)) * dodge_ratio[id] * .3;
 		}
 		// away from wall
-		ret += max(0., fireball_radius * 2 - (x - point(disw[int(x.x)][int(x.y)])).len()) * dodge_ratio[id] * .1;
+		ret += max(0., fireball_radius * 2 - (x - point(disw[int(x.x)][int(x.y)])).len()) * dodge_ratio[id] * .05;
 	}
 
 	// away from enemy
@@ -924,8 +961,8 @@ void _401() {
 
 void _131() {
 	static int cnt = 0;
-	cnt = logic->score[ally] >= logic->score[enemy] ? max(cnt - 1, 0) : min(cnt + 1, 400);
-	if (cnt < 200) {
+	cnt = logic->score[ally] >= logic->score[enemy] ? max(cnt - 1, 0) : min(cnt + 1, 1000);
+	if (cnt < 500) {
 		get_bonus(0, 0);
 		get_bonus(1, 1);
 		get_crystal_3({2, 3, 4});
