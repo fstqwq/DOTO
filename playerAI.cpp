@@ -58,6 +58,8 @@ int attack[hunum];
 bool is_guard[hunum], no_flash[hunum], nofire[hunum];
 int belonger, enbelong;
 
+int bonustime[2];
+
 double goalr[hunum];
 double dodge_ratio[hunum];
 
@@ -69,6 +71,7 @@ const int rand_times = 266;
 int frame = 0;
 
 stringstream debug;
+
 
 void frame_before() {
 	debug.str("");
@@ -86,6 +89,21 @@ void frame_before() {
 	for (int i = 0; i < hunum; i++) attack[i] = -1, is_guard[i] = 0;
 	for (int i = 0; i < hunum; i++) no_flash[i] = 0, nofire[i] = 0;
 	for (int i = 0; i < hunum; i++) dodge_ratio[i] = 1;
+
+	for (int i = 0; i < facnum; i++) {
+		if (logic->bonus[i]) {
+			bonustime[i] = 9999;
+		}
+		else {
+			if (bonustime[i] > 300) {
+				bonustime[i] = 0;
+			}
+			else {
+				bonustime[i]++;
+			}
+		}
+	}
+
 
 	belonger = crystal[enemy].belong;
 	enbelong = crystal[ally].belong;
@@ -228,9 +246,15 @@ void meteor(int i, const point &p) {
 	if ((p - Move[i]).len() > meteor_distance) {
 		return;
 	}
-	if (is_guard[i] && (frame - 250) % (8 * frames_per_second) !=  (8 * frames_per_second) - meteor_delay / 2) {
-		return;
+
+	for (int d = 0; d < 2; d++) {
+		if ((goal[i] - map.bonus_places[d]).len() < bonus_radius) {
+			if (bonustime[d] < 150) {
+				return;
+			}
+		}
 	}
+
 	logic->meteor(i, p);
 	Meteor[i] = p;
 }
@@ -387,7 +411,7 @@ void get_bonus(int p, int bonus_id) {
 	for (int i = 0; i < 5; i++) if (p != i && !mydead[i] && (mypos[i] - b).len() < bonus_radius * 2) {
 		hasally = 1;
 	}
-	if (hasally) {
+	if (hasally || logic->score[ally] < logic->score[enemy]) {
 		int tar = has_enemy(b, bonus_radius * 3);
 		if (tar != -1) {
 			suicide(p);
@@ -395,7 +419,7 @@ void get_bonus(int p, int bonus_id) {
 		}
 	}
 	if ((mypos[p] - b).len() < bonus_radius + EP) {
-		is_guard[p] = 1;
+		is_guard[p] = bonus_id + 1;
 		int tar = has_enemy(b, bonus_radius);
 		dodge_ratio[p] = 6;
 		if (tar != -1) {
@@ -404,13 +428,16 @@ void get_bonus(int p, int bonus_id) {
 				goalr[p] = 5.201;
 			}
 			else */{
-				if ((enpos[tar] - b).len() < 1.5) {
+				if ((enpos[tar] - b).len() < 1.0) {
 					goal[p] = b;
 				}
 				else {
 					goal[p] = enpos[tar];
 					goalr[p] = 2.5;
 				}
+			}
+			if (frame < 600 && bonustime[bonus_id] > 119 && (goal[p] - mypos[p]).len() < human_velocity + EP) {
+				no_flash[p] = 1;
 			}
 			if (!Legal(goal[p])) goal[p] = b;
 		}
@@ -455,7 +482,7 @@ void get_crystal_3(vector <int> squad) {
 			}
 			else {
 				goal[i] = cp;
-				if (enbelong != -1 && ((enpos[enbelong] - mypos[i]).len() < 20)) {
+				if (enbelong != -1 && ((enpos[enbelong] - mypos[i]).len() < 38)) {
 					suicide(i, enpos[enbelong]);
 				}	
 				else if (belonger != -1) {
@@ -487,7 +514,7 @@ void get_crystal_3(vector <int> squad) {
 			}
 			else {
 				bool arranged = 0;
-				if (enbelong != -1 && ((enpos[enbelong] - mypos[i]).len() < 20)) {
+				if (enbelong != -1 && ((enpos[enbelong] - mypos[i]).len() < 38)) {
 					suicide(i, enpos[enbelong]);
 				}
 				else if (arranged && (ff_enemy(mypos[i]) - mypos[i]).len() < 10) {
@@ -671,11 +698,11 @@ double Score(int id, point x) {
 			for (int i = 0; i < 2; i++) {
 				if ((goal[id] - (map.bonus_places[i])).len() < bonus_radius) {
 					flag = 1;
-					ret += dis * (dis > goalr[id] ? 1.5 : 0.01);
-					ret += (map.bonus_places[i] - x).len() * 0.5;
+					ret += dis * (dis > goalr[id] ? 1 : 0.2);
+					ret += (map.bonus_places[i] - x).len() * 0.3;
 					if (has_enemy(map.bonus_places[i], bonus_radius) != -1) {
-						ret -= ((map.bonus_places[i] - x).len() < EP) * 0.1;
-						ret -= ((enpos[has_enemy(map.bonus_places[i], bonus_radius)] - map.bonus_places[i]).len() >= (x - map.bonus_places[i]).len()) * 0.2;
+						ret += (x - map.bonus_places[i]).len() > (map.bonus_places[i] - ff_enemy(map.bonus_places[i])).len();
+						ret -= (x == map.bonus_places[i]) * 0.2;
 						nomove = 1;
 					}
 					break;
@@ -744,15 +771,22 @@ double Score(int id, point x) {
 		point p = v.position;
 		double nowr = explode_radius - (v.last_time - 1) * human_velocity * 0.99;
 		double dis = (p - x).len();
+		double tmp = 0;
 		if (dis < nowr + EP) {
-			ret += 1e9;
+			tmp = 1e9;
 		}
 		else if (dis < explode_radius + EP) {
-			ret += (nowr + human_velocity > dis ? 10 : 5) + pow(15 - v.last_time, 2) * (explode_radius - dis);
+			if (is_guard[id]) {
+				tmp = nowr + human_velocity * 1.5 > dis ? 4 + 8 * (nowr + human_velocity * 1.5 - dis) : 0;
+			}
+			else {
+				tmp = (nowr + human_velocity > dis ? 10 : 5) + pow(15 - v.last_time, 2) * (explode_radius - dis);
+			}
 		}
 		else if (dis < explode_radius +  human_velocity * 3 && !is_guard[id]) {
-			ret += .3 * ((15 - v.last_time) / 5.) * (explode_radius + human_velocity * 3 - dis);
+			tmp = .3 * ((15 - v.last_time) / 5.) * (explode_radius + human_velocity * 3 - dis);
 		}
+		ret += tmp;
 	}
 	return ret;
 }
@@ -773,14 +807,17 @@ void adjust_movement() {
 
 		for (auto &x : fireballs) {
 			if (x.from_number % facnum != ally) {
-				if ((x.position - Move[i]).len() < 45) {
+				if ((x.position - mypos[i]).len() < 45) {
 					nowfir.push_back(x);
 				}
 			}
 		}
 		for (auto &x : meteors) {
 			if (x.from_number % facnum != ally) {
-				if ((x.position - Move[i]).len() < 40 && x.last_time < 15) {
+				if ((x.position - mypos[i]).len() < 40 && x.last_time < 15) {
+					if ((x.position - mypos[i]).len() < 10 && x.last_time < 2) {
+						no_flash[i] = 0;
+					}
 					nowmet.push_back(x);
 				}
 			}
@@ -856,9 +893,11 @@ void adjust_movement() {
 //		logic->debugAppend(to_string(i) + " : " + to_string(sc) + "\n");
 	}
 
-	for (int i = 0; i < hunum; i++) move(i, Move[i]);
-//	debug << "Move : "<< Move[0].x << " " << Move[0].y << endl;
-//	debug << "Goal : "<< goal[0].x << " " << goal[0].y << endl;
+	for (int i = 0; i < hunum; i++) {
+		move(i, Move[i]);
+	}
+//	debug << "Goal0 : "<< goal[0].x << " " << goal[0].y << endl;
+//	debug << "Goal1 : "<< goal[1].x << " " << goal[1].y << endl;
 }
 
 void damage() {
@@ -887,10 +926,8 @@ void damage() {
 		point my = Move[i], att = enpos[attack[i]];
 		shoot(i, forecast(attack[i], -1, my));
 		meteor(i, forecast(attack[i], meteor_delay));
-		if (is_guard[i]) {
-			meteor(i, map.bonus_places[0]);
-			meteor(i, map.bonus_places[1]);
-		}
+		meteor(i, map.bonus_places[0]);
+		meteor(i, map.bonus_places[1]);
 	}
 }
 
@@ -959,16 +996,39 @@ void _401() {
 }
 
 
+void __131() {
+	get_bonus(0, 0);
+	get_bonus(1, 1);
+	get_crystal_3({2, 3, 4});
+}
+
 void _131() {
 	static int cnt = 0;
-	cnt = logic->score[ally] >= logic->score[enemy] ? max(cnt - 1, 0) : min(cnt + 1, 1000);
-	if (cnt < 500) {
+	cnt = logic->score[ally] >= logic->score[enemy] ? max(cnt - 1, 0) : min(cnt + 1, 1200);
+	static int bc[2] = {0, 0};
+	for (int i = 0; i < 2; i++) {
+		if ((ff_enemy(map.bonus_places[i]) - map.bonus_places[i]).len() < 0.1) {
+			bc[i] = 0;
+		}
+		else {
+			bc[i] ++;
+		}
+	}
+	if (cnt < 400) {
 		get_bonus(0, 0);
 		get_bonus(1, 1);
 		get_crystal_3({2, 3, 4});
 	}
 	else {
-		get_crystal_4({0, 1, 2, 3, 4});
+		vector <int> squad = {2, 3, 4};
+		for (int i = 0; i < 2; i++) {
+			if (bc[i] < 50) squad.push_back(i);
+			else {
+				get_bonus(i, i);
+			}
+		}
+		if (squad.size() <= 3) get_crystal_3(squad);
+		else get_crystal_4(squad);
 	}
 }
 
@@ -990,10 +1050,10 @@ void solve() {
 
 	frame_after();
 	
-	debug << ("max. " + to_string(maxadj) + " \n");
+	debug << bonustime[0] << " " << bonustime[1] << endl;
 
 	debug << (to_string((clock() - st) / double(CLOCKS_PER_SEC)));
-
+	
 	logic->debug(debug.str());
 }
 

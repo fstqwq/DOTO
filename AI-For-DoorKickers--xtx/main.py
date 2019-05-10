@@ -578,17 +578,16 @@ def getbonus(bonus):
                 mindis = Dis
                 num = human.number
                 both = 0
-            elif Dis == mindis and score[num % faction_number] < score[human.faction]:
+            elif (Dis == mindis) and (score[num % faction_number] < score[human.faction]):
                 num = human.number
                 both = 0
-            elif Dis == mindis and score[num % faction_number] == score[human.faction]:
-                if num % faction_number != human.faction:
-                    both = 1
+            elif (Dis == mindis) and (human.faction != num % faction_number) and (score[0] == score[1]):
+                both = 1
                 
     if mindis < bonus.radius + eps:
         if both:
-            score[0]+=bonus_score / 2
-            score[1]+=bonus_score / 2
+            score[0]+=bonus_score / 2.
+            score[1]+=bonus_score / 2.
             bonu[0] += 0.5
             bonu[1] += 0.5
         else:

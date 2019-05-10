@@ -8,7 +8,7 @@ from BaseClass import *
 import numpy as np
 
 scale = 2.0
-sleepp = 1 / 50000.
+sleepp = 1 / 20.
 score = [0, 0]
 deli  = [0, 0]
 bonu  = [0, 0]
@@ -139,9 +139,6 @@ def PlayJsonFile(mydir):
 				sys.exit()
 		for target in targets:
 			draw_target(target)
-		for meteor in meteors:
-			draw_meteor(meteor)
-		
 		for human in humans:
 			if human.death_time == -1:
 				draw_human(human)
@@ -152,6 +149,10 @@ def PlayJsonFile(mydir):
 		for bonus in bonuses:
 			if bonus.time == -1:
 				draw_bonus(bonus)
+		for meteor in meteors:
+		    draw_meteor(meteor)
+		
+
 		for i in (0, 1):
 			myfont = pygame.font.Font(None, 60)
 			color = (100, 100, 255)
