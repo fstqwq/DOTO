@@ -412,7 +412,7 @@ void get_bonus(int p, int bonus_id) {
 		hasally = 1;
 	}
 	if (hasally || logic->score[ally] < logic->score[enemy]) {
-		int tar = has_enemy(b, bonus_radius * 3);
+		int tar = has_enemy(b, 3);
 		if (tar != -1) {
 			suicide(p);
 			return;
@@ -433,11 +433,11 @@ void get_bonus(int p, int bonus_id) {
 				}
 				else {
 					goal[p] = enpos[tar];
-					goalr[p] = 2.5;
+					goalr[p] = 2.0;
 				}
-			}
-			if (frame < 600 && bonustime[bonus_id] > 119 && (goal[p] - mypos[p]).len() < human_velocity + EP) {
-				no_flash[p] = 1;
+				if ((goal[p] - mypos[p]).len() < 2.9) {
+					no_flash[p] = 1;
+				}
 			}
 			if (!Legal(goal[p])) goal[p] = b;
 		}
@@ -714,7 +714,7 @@ double Score(int id, point x) {
 		}
 		else {
 			if (softr[id]) {
-				ret += max(0.,  dis - goalr[id]) / 2 - dis_to(x, targ[ally]) * 0.01;
+				ret += max(0.,  dis - goalr[id]) / 2 - (x - targ[ally]).len() * 0.01;
 			}
 			else {
 				ret += abs(dis - goalr[id]);
@@ -777,14 +777,14 @@ double Score(int id, point x) {
 		}
 		else if (dis < explode_radius + EP) {
 			if (is_guard[id]) {
-				tmp = nowr + human_velocity * 1.5 > dis ? 4 + 8 * (nowr + human_velocity * 1.5 - dis) : 0;
+				tmp = nowr + human_velocity * 1.5 > dis ? 5 + 100 * (nowr + human_velocity * 1.5 - dis) : 0;
 			}
 			else {
-				tmp = (nowr + human_velocity > dis ? 10 : 5) + pow(15 - v.last_time, 2) * (explode_radius - dis);
+				tmp = (nowr + human_velocity > dis ? 10 : 5) + pow(15 - v.last_time, 2) * (explode_radius - dis) * dodge_ratio[id];
 			}
 		}
 		else if (dis < explode_radius +  human_velocity * 3 && !is_guard[id]) {
-			tmp = .3 * ((15 - v.last_time) / 5.) * (explode_radius + human_velocity * 3 - dis);
+			tmp = .3 * ((15 - v.last_time) / 5.) * (explode_radius + human_velocity * 3 - dis) * dodge_ratio[id];
 		}
 		ret += tmp;
 	}
@@ -808,6 +808,9 @@ void adjust_movement() {
 		for (auto &x : fireballs) {
 			if (x.from_number % facnum != ally) {
 				if ((x.position - mypos[i]).len() < 45) {
+					if ((x.position - mypos[i]).len() < 6) {
+						no_flash[i] = 0;
+					}
 					nowfir.push_back(x);
 				}
 			}
@@ -1007,7 +1010,7 @@ void _131() {
 	cnt = logic->score[ally] >= logic->score[enemy] ? max(cnt - 1, 0) : min(cnt + 1, 1200);
 	static int bc[2] = {0, 0};
 	for (int i = 0; i < 2; i++) {
-		if ((ff_enemy(map.bonus_places[i]) - map.bonus_places[i]).len() < 3) {
+		if ((ff_enemy(map.bonus_places[i]) - map.bonus_places[i]).len() < 7) {
 			bc[i] = 0;
 		}
 		else {
@@ -1022,7 +1025,7 @@ void _131() {
 	else {
 		vector <int> squad = {2, 3, 4};
 		for (int i = 0; i < 2; i++) {
-			if (bc[i] < 60) squad.push_back(i);
+			if (bc[i] < 40) squad.push_back(i);
 			else {
 				get_bonus(i, i);
 			}
